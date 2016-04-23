@@ -74,27 +74,13 @@
     Macros.macros = {};
 
     Compiler.construct = function (s) {
-        var closeSelfClosingTags = s.closeSelfClosingTags,
-            booleansWithValue = s.booleansWithValue,
-            preferXhtml = s.preferXhtml || false;
-        
-        if(preferXhtml)
-            closeSelfClosingTags = booleansWithValue = true;
-        
         this.AREA_TAG = 'SKIP';
-        this.finallCodeIndentation = s.finallCodeIndentation || "tabs";
-        this.lvlIndentation = "";
-        this.skippedTagLvl = null;
-        this.skippedTags = s.skippedTags || [];
-        this.preferXhtml = preferXhtml;
-        this.closeSelfClosingTags = closeSelfClosingTags;
-        this.booleansWithValue = booleansWithValue;
         this.closeTags = [];
         this.codeStorage = "";
         this.inNoCompileArea = false;
         this.skipRow = false;
         this.noCompileAreaClosed = null;
-        this.lnBreak = s.compressCode ? '' : "\n";
+        this.lnBreak = s.compressCode && s.compressCode === true ? "" : "\n";
         this.spacesPerIndent = s.spacesPerIndent || 4;
         this.structureHtmlSkeleton = typeof s.structureHtmlSkeleton !== "undefined" ? s.structureHtmlSkeleton : true;
         this.indentMethod = s.indentMethod || 3;
@@ -162,30 +148,17 @@
      * @returns {string}
      */
     Compiler.compile = function (content) {
-        var indentation, i, ln, lvl, txt, element, noCompileAreaTag, replicatorResult, clearedText, attributes, macro, macroExists, re,
+
+        var ln, lvl, txt, element, noCompileAreaTag, replicatorResult, clearedText, attributes, macro, macroExists, re,
             that = Compiler,
             lns = content.split(/\n/);
-        
-        if(!content) return '';
-        
+
         for (ln of lns) {
             lvl = that.getLnLvl(ln);
             txt = that.getLnTxt(ln);
             element = that.getElement(ln);
-            noCompileAreaTag = that.detectNoCompileArea(txt, element, lvl);
+            noCompileAreaTag = that.detectNoCompileArea(txt);
 
-            if (this.lnBreak) {
-                indentation = "\t";
-                if (that.finallCodeIndentation === "spaces") {
-                    indentation = '    ';
-                }
-
-                that.lvlIndentation = '';
-                for (i = 0; i < lvl; i++) {
-                    that.lvlIndentation += indentation;
-                }
-            }
-            
             if (that.structureHtmlSkeleton && element === "html") {
                 lvl = 0;
             } else if (that.structureHtmlSkeleton && element !== "html") {
@@ -206,16 +179,18 @@
 
             if (Elements.findElement(element, false) && !that.inNoCompileArea && !that.skipRow) {
                 clearedText = txt.replace(element, '');
-                attributes = that.processLnAttributes(clearedText);
+                attributes = that.getLnAttributes(clearedText);
                 that.addOpenTag(element, lvl, attributes);
-            } else if(txt) {
-                that.addCloseTags(lvl);
-                if (!that.inNoCompileArea && !noCompileAreaTag && !that.skipRow) {
-                    macro = Macros.replace(element, txt);
-                    macroExists = macro['exists'];
-                    that.codeStorage += macroExists ? that.lvlIndentation + macro['replacement'] + that.lnBreak : that.lvlIndentation + txt + that.lnBreak;
-                } else if (that.inNoCompileArea || that.skipRow) {
-                    that.codeStorage += !noCompileAreaTag ? that.lvlIndentation + txt + that.lnBreak : "";
+            } else {
+                if (txt) {
+                    that.addCloseTags(lvl);
+                    if (!that.inNoCompileArea && !noCompileAreaTag && !that.skipRow) {
+                        macro = Macros.replace(element, txt);
+                        macroExists = macro['exists'];
+                        that.codeStorage += macroExists ? macro['replacement'] + that.lnBreak : txt + that.lnBreak;
+                    } else if (that.inNoCompileArea || that.skipRow) {
+                        that.codeStorage += !noCompileAreaTag ? that.lnBreak + txt + that.lnBreak : "";
+                    }
                 }
             }
         }
@@ -268,7 +243,7 @@
         if (length > 0) {
             for (i = length - 1; i >= 0; i--) {
                 if (lvl <= this.closeTags[i][0]) {
-                    this.codeStorage += this.closeTags[i][1];
+                    this.codeStorage += this.lnBreak + this.closeTags[i][1] + this.lnBreak;
                     lasTag = i;
                 } else {
                     break;
@@ -284,13 +259,12 @@
      * @param object attributes
      */
     Compiler.addOpenTag = function (element, lvl, attributes) {
-        var newAttr, paramKey, selfClosing, attribute, key, closeTag, singleLvl, textIndentation,
+        var newAttr, paramKey, selfClosing, attribute, key, closeTag,
             usedKeys = [],
             withoutKey = 0,
             that = Compiler,
-            indentation = that.lvlIndentation,
             elementSettings = Elements.findElement(element, true),
-            openTag = indentation + '<' + element;
+            openTag = "<" + element;
 
         if (elementSettings['qkAttributes'] && attributes['qkAttributes']) {
             for (attribute in attributes['qkAttributes']) {
@@ -315,18 +289,14 @@
         openTag += attributes['htmlAttributes'] + attributes['booleanAttributes'];
 
         // Close the open tag, add close tags if needed
-        selfClosing = elementSettings['paired'] || !that.closeSelfClosingTags ? '' : ' /';
+        selfClosing = elementSettings['paired'] ? '' : ' /';
         openTag += selfClosing + '>' + that.lnBreak;
         that.addCloseTags(lvl);
         that.codeStorage += openTag;
         // If the tag is paired add its close tag to the storage
         if (elementSettings['paired']) {
-            singleLvl = '';
-            if (that.lnBreak)
-                singleLvl = that.finallCodeIndentation === "spaces" ? '    ' : "\t";
-            textIndentation = indentation + singleLvl;
-            that.codeStorage += attributes['txt'] ? textIndentation + attributes['txt'] + that.lnBreak : "";
-            closeTag = indentation + '</' + element + '>' + that.lnBreak;
+            that.codeStorage += attributes['txt'] ? attributes['txt'] : "";
+            closeTag = '</' + element + '>';
             that.closeTags.push([lvl, closeTag]);
         }
     };
@@ -335,8 +305,8 @@
      * @param string txt
      * @returns {{qkAttributes: Array, htmlAttributes: string, booleanAttributes: string, txt: string}}
      */
-    Compiler.processLnAttributes = function (txt) {
-        var value, i, classes, newHref, htmlAttributes, htmlClsSelector, re, reAll, idSelector, attribute, matches, txt2array, match, paramVal, clsSelectors, qkAttributes, booleanAttributes, paramKey, txtFromTag2End;
+    Compiler.getLnAttributes = function getLnAttributes(txt) {
+        var value, i, newHref, htmlAttributes, htmlClsSelector, re, reAll, idSelector, attribute, matches, txt2array, match, paramVal, clsSelectors, qkAttributes, booleanAttributes, paramKey, txtFromTag2End;
 
         // Store the text from the first tag to the end of the line
         re = /\<.*$/;
@@ -346,18 +316,16 @@
             txtFromTag2End += match[0];
         }
 
-        // Replace -*= for data-*=
-        re = / -([\w-]+)+=/g;
-        matches = matchAll(re, txt);
-        if (matches) {
-            for (match of matches) {
-                re = new RegExp('-' + match[1] + '=');
-                txt = txt.replace(re, ' data-' + match[1] + '=');
-            }
+        // Replace n$*; for n:href=""
+        re = / n\$(.+);/;
+        if (matches = txt.match(re)) {
+            value = matches[1] || matches[2];
+            newHref = ' n:href="' + value + '"';
+            txt = txt.replace(re, newHref);
         }
-        
+
         // Get all html attributes
-        re = / [\w:-]+="[^"]*"| [\w:-]+='[^']*'| [\w:-]+=\S+/g;
+        re = / [\w:-]+="[^"]*"| [\w:-]+=\S+/g;
         matches = matchAll(re, txt);
         htmlAttributes = '';
 
@@ -369,7 +337,7 @@
         // Get the id selector
         re = / #(\S+)/;
         idSelector = txt.match(re);
-        if (idSelector && !htmlAttributes.match(/ id="[^"]+"|  id='[^']+'| id=[\S]+/))
+        if (idSelector && !htmlAttributes.match(/ id="[^"]+"| id=[\S]+/))
             htmlAttributes += ' id="' + idSelector[1] + '"';
 
         if (idSelector) {
@@ -392,16 +360,10 @@
         }
 
         // Synchronize class selectors
-        re = / class="([^"]+)+"| class='([^']+)+'| class=([\S]+)+/;
+        re = / class="([^"]+)+"| class=([\S]+)+/;
         htmlClsSelector = htmlAttributes.match(re);
         if (clsSelectors && htmlClsSelector) {
-            for(i = 1; i < htmlClsSelector.length; i++) {
-                if(htmlClsSelector[i]) {
-                    htmlClsSelector = htmlClsSelector[i];
-                    break;
-                }
-            }
-            htmlAttributes = htmlAttributes.replace(re, ' class="' + htmlClsSelector + ' ' + clsSelectors + '"');
+            htmlAttributes = htmlAttributes.replace(re, ' class="' + htmlClsSelector[1] + ' ' + clsSelectors + '"');
         } else if (clsSelectors) {
             htmlAttributes += ' class="' + clsSelectors + '"';
 
@@ -426,7 +388,6 @@
                 }
             }
         }
-        
         // Get the text
         txt = Compiler.getLnTxt(txt) + txtFromTag2End;
 
@@ -437,7 +398,6 @@
             if (Elements.isBoolean(attribute)) {
                 txt = txt.replace(attribute, '');
                 booleanAttributes += ' ' + attribute;
-                booleanAttributes += this.booleansWithValue ? '="' + attribute + '"' : '';
             } else {
                 break;
             }
@@ -456,11 +416,10 @@
      * @param string txt
      * @returns {boolean}
      */
-    Compiler.detectNoCompileArea = function (txt, element, lvl) {
+    Compiler.detectNoCompileArea = function (txt) {
         var areaClosed, matchedTag, tag, re, tagDetected,
             that = Compiler,
             skipTagClose = '/' + that.AREA_TAG,
-            skippedTags = ["style", "script", "code"].concat(that.skipTags),
             openTags = ['<style>', '<script>', '<?php', '<?', that.AREA_TAG].concat(that.ncaOpenTags),
             closeTags = ['</style>', '</script>', '?>', skipTagClose].concat(that.ncaCloseTags),
             regExpInlineTags = [/^\s*\<(?:\?|php) .*\?\>/, /^\s*\<(?:script|style) *[^>]*\>.*\<\/(?:style|script)\>/].concat(that.ncaRegExpInlineTags),
@@ -474,55 +433,43 @@
 
         areaClosed = that.inNoCompileArea ? false : null;
 
-        if (inArray(element, skippedTags) && that.skippedTagLvl === null) {
-            that.skippedTagLvl = lvl;
-        } else if (that.skippedTagLvl !== null && lvl > that.skippedTagLvl) {
-            this.skipRow = true;
-        } else if (that.skippedTagLvl !== null && lvl <= that.skippedTagLvl && inArray(element, skippedTags)) {
-            that.skippedTagLvl = lvl;
+        if (inArray(txt.trim(), openTags)) {
+            that.inNoCompileArea = true;
+        } else if (inArray(txt.trim(), closeTags)) {
+            that.inNoCompileArea = false;
         } else {
-            that.skippedTagLvl = null;
-        }
-        
-        if (!that.skippedTagLvl) {
-            if (inArray(txt.trim(), openTags)) {
-                that.inNoCompileArea = true;
-            } else if (inArray(txt.trim(), closeTags)) {
-                that.inNoCompileArea = false;
-            } else {
-                matchedTag = false;
+            matchedTag = false;
 
-                if (!that.inNoCompileArea) {
-                    for (tag of regExpInlineTags) {
-                        if (txt.match(tag)) {
-                            matchedTag = that.skipRow = true;
-                            break;
-                        }
+            if (!that.inNoCompileArea) {
+                for (tag of regExpInlineTags) {
+                    if (txt.match(tag)) {
+                        matchedTag = that.skipRow = true;
+                        break;
                     }
                 }
+            }
 
-                if (!matchedTag && !that.inNoCompileArea) {
-                    for (tag of regExpOpenTags) {
-                        if (txt.match(tag)) {
-                            matchedTag = that.inNoCompileArea = true;
-                            break;
-                        }
+            if (!matchedTag && !that.inNoCompileArea) {
+                for (tag of regExpOpenTags) {
+                    if (txt.match(tag)) {
+                        matchedTag = that.inNoCompileArea = true;
+                        break;
                     }
                 }
+            }
 
-                if (!matchedTag && that.inNoCompileArea) {
-                    for (tag of regExpCloseTags) {
-                        if (txt.match(tag)) {
-                            that.skipRow = true;
-                            that.inNoCompileArea = false;
-                            break;
-                        }
+            if (!matchedTag && that.inNoCompileArea) {
+                for (tag of regExpCloseTags) {
+                    if (txt.match(tag)) {
+                        that.skipRow = true;
+                        that.inNoCompileArea = false;
+                        break;
                     }
                 }
             }
         }
-        
-        tagDetected = txt === that.AREA_TAG || txt === skipTagClose;
+
+        tagDetected = (txt === that.AREA_TAG || txt === skipTagClose);
 
         // Set and return
         that.noCompileAreaClosed = areaClosed;
@@ -731,13 +678,11 @@
 
     /** @param string macros */
     Macros.removeMacros = function (macros) {
-        if(typeof macros === "string") {
-            var macro;
-            macros = macros.split(" ");
-            for (macro of macros) {
-                if (arrayKeyExists(macro, this.macros)) {
-                    delete this.macros[macro];
-                }
+        var macro;
+        macros = macros.split(" ");
+        for (macro of macros) {
+            if (arrayKeyExists(macro, this.macros)) {
+                delete this.macros[macro];
             }
         }
     };
@@ -786,7 +731,7 @@
 
     /** @param array $attributes */
     Elements.addBooleanAttributes = function (attributes) {
-        if (typeof attributes === "string") {
+        if (attributes && typeof attributes === "string") {
             attributes = attributes.splice(" ");
             Elements.booleanAttributes.concat(attributes);
         }
@@ -794,70 +739,64 @@
 
     /** @param array $attributes */
     Elements.removeBooleanAttributes = function (attributes) {
-        if(typeof attributes === "string") {
-            var attributeKey, attribute;
-            attributes = attributes.split(" ");
-            for (attribute of attributes) {
-                attributeKey = inArray(attribute, this.booleanAttributes, true);
-                if (attributeKey >= 0) {
-                    delete this.booleanAttributes[attributeKey];
-                }
+        var attributeKey, attribute;
+
+        attributes = attributes.split(" ");
+        for (attribute of attributes) {
+            attributeKey = inArray(attribute, this.booleanAttributes, true);
+            if (attributeKey >= 0) {
+                delete this.booleanAttributes[attributeKey];
             }
         }
     };
     Elements.addElements = function (elements) {
-        if(typeof elements === "object") {
-            var elementKey, elementSettings;
-            for (elementKey in elements) {
-                elementSettings = elements[elementKey];
-                if (elementSettings) {
-                    this.elementsSettings[elementKey] = elementSettings;
-                }
-                this.elements.push(elementKey);
+        var elementKey, elementSettings;
+
+        for (elementKey in elements) {
+            elementSettings = elements[elementKey];
+            if (elementSettings) {
+                this.elementsSettings[elementKey] = elementSettings;
             }
+            this.elements.push(elementKey);
         }
     };
 
     Elements.removeElements = function (elements) {
-        if(typeof elements === "string") {
-            var elements, elementKey, element;
+        var elements, elementKey, element;
 
-            elements = elements.split(" ");
-            for (element of elements) {
-                elementKey = inArray(element, this.elements, true);
-                if (elementKey >= 0)
-                    delete this.elements[elementKey];
+        elements = elements.split(" ");
+        for (element of elements) {
+            elementKey = inArray(element, this.elements, true);
+            if (elementKey >= 0)
+                delete this.elements[elementKey];
 
-                delete this.elementsSettings[element];
-            }
+            delete this.elementsSettings[element];
         }
     };
 
     Elements.changeQkAttributes = function (elements) {
-        if(typeof elements === "object") {
-            var attributes, attribute, newAttribute, attrKey, actAttribute, element, elementKey,
-                removeAttributes = [];
-            if (elements && typeof elements === "object") {
-                for (elementKey in elements) {
-                    element = elementKey;
-                    attributes = elements[elementKey];
-                    for (attribute in attributes) {
-                        actAttribute = attribute;
-                        newAttribute = attributes[attribute];
-                        if (arrayKeyExists(element, this.elementsSettings) && arrayKeyExists("qkAttributes", this.elementsSettings[element]) && inArray(actAttribute, this.elementsSettings[element]["qkAttributes"])) {
-                            if (newAttribute) {
-                                attrKey = inArray(actAttribute, this.elementsSettings[element]["qkAttributes"], true);
-                                this.elementsSettings[element]["qkAttributes"][attrKey] = newAttribute;
-                            } else {
-                                removeAttributes.push(actAttribute);
-                            }
+        var attributes, attribute, newAttribute, attrKey, actAttribute, element, elementKey,
+            removeAttributes = [];
+        if (elements && typeof elements === "object") {
+            for (elementKey in elements) {
+                element = elementKey;
+                attributes = elements[elementKey];
+                for (attribute in attributes) {
+                    actAttribute = attribute;
+                    newAttribute = attributes[attribute];
+                    if (arrayKeyExists(element, this.elementsSettings) && arrayKeyExists("qkAttributes", this.elementsSettings[element]) && inArray(actAttribute, this.elementsSettings[element]["qkAttributes"])) {
+                        if (newAttribute) {
+                            attrKey = inArray(actAttribute, this.elementsSettings[element]["qkAttributes"], true);
+                            this.elementsSettings[element]["qkAttributes"][attrKey] = newAttribute;
+                        } else {
+                            removeAttributes.push(actAttribute);
                         }
                     }
-                    if (removeAttributes) {
-                        for (attribute of removeAttributes) {
-                            attrKey = inArray(attribute, this.elementsSettings[element]["qkAttributes"], true);
-                            delete this.elementsSettings[element]["qkAttributes"][attrKey];
-                        }
+                }
+                if (removeAttributes) {
+                    for (attribute of removeAttributes) {
+                        attrKey = inArray(attribute, this.elementsSettings[element]["qkAttributes"], true);
+                        delete this.elementsSettings[element]["qkAttributes"][attrKey];
                     }
                 }
             }
