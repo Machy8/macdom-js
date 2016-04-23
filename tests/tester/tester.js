@@ -1,6 +1,5 @@
 window.TestFiles = function (test) {
     Macdom.setup.reset = true;
-    Macdom.setup.compressCode = true;
     var path = "tests/tests",
         tested = file_get_contents(path + "/" + test + "-a.html"),
         expected = file_get_contents(path + "/" + test + "-b.html"),
