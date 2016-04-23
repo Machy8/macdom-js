@@ -1,4 +1,5 @@
 (function(){
+
     TestFiles("booleans");
     TestFiles("class");
     TestFiles("html-attributes");
@@ -7,6 +8,10 @@
     TestFiles("quick-attributes");
     TestFiles("replicator");
     TestFiles("showcase");
+    Macdom.setup.preferXhtml = true;
+    TestFiles("prefer-xhtml");
+    Macdom.setup.finallCodeIndentation = "spaces";
+    TestFiles("finall-code-indentation");
     
     Macdom.setup.ncaRegExpInlineTags = [/^\s*\<(?:skipthisarea) *[^>]*\>.*\<\/skipthisarea\>/];
     Macdom.setup.ncaRegExpOpenTags = [/^\s*\<(?:skipthisarea) *[^>]*\>/];
@@ -21,16 +26,14 @@
     TestFiles("text");
     
     TestStrings("Elements 1", 'html', '<html></html>');
-    TestStrings("Elements 2", 'input', '<input />');
-    TestStrings("Elements 3", 'div\ninput', '<div></div><input />');
-
-    TestStrings("N href", 'a n$Homepage:default, id => $id, lang => cs; #homepageLink .link Homepage link', '<a n:href="Homepage:default, id => $id, lang => cs" id="homepageLink" class="link">Homepage link</a>');
+    TestStrings("Elements 2", 'input', '<input>');
+    TestStrings("Elements 3", 'div\ninput', '<div></div><input>');
     
     Macdom.setup.addBooleanAttributes = "beer steak muhehe";
-    TestStrings("addBooleanAttributes", 'input $text beer steak muhehe', '<input type="text" beer steak muhehe />');
+    TestStrings("addBooleanAttributes", 'input $text beer steak muhehe', '<input type="text" beer steak muhehe>');
 
     Macdom.setup.removeBooleanAttributes = "beer steak muhehe";
-    TestStrings("removeBooleanAttributes", 'input $text beer steak muhehe', '<input type="text" />');
+    TestStrings("removeBooleanAttributes", 'input $text beer steak muhehe', '<input type="text">');
     
     Macdom.setup.indentMethod = 1;
     TestStrings("indent methods 1.1", "div\n    div", '<div><div></div></div>');
@@ -78,10 +81,10 @@
         div: null
     };
     TestStrings("addElements", 'svg $100 $100 Inner text', '<svg width="100" height="100">Inner text</svg>');
-    TestStrings("addElements2", 'elementxy $Some data content;', '<elementxy data-somedata="Some data content" />');
+    TestStrings("addElements2", 'elementxy $Some data content;', '<elementxy data-somedata="Some data content">');
     
     var inputFunction = function (line) {
-        return '<input type="password" data-user="' + line + '" placeholder="New password" />';
+        return '<input type="password" data-user="' + line + '" placeholder="New password">';
     };
     Macdom.setup.addMacros = {
         title1: function (line) {
@@ -90,7 +93,7 @@
         passwordInput: inputFunction
     };
     TestStrings("addMacros", 'title1 Some text in the h1 element', '<h1>Some text in the h1 element</h1>');
-    TestStrings("addMacros2", 'passwordInput user12345', '<input type="password" data-user="user12345" placeholder="New password" />');
+    TestStrings("addMacros2", 'passwordInput user12345', '<input type="password" data-user="user12345" placeholder="New password">');
 
     Macdom.setup.removeMacros = "!5 utf-8";
     TestStrings("removeMacros", '!5\nutf-8', '!5utf-8');
