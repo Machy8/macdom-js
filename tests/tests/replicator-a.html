@@ -9,15 +9,15 @@ H [2] #secondTitle Second title
 /@H
 Deregistered title
 ul
-    @ li .replicatedLi Number - 
+    @ li .replicatedLi Number - |
     one
     two
     three
     /@
 @ div .class-[@] Replicated line - 
-[;+=´´)ú¨§ů-.,-*/+_:\\()\@&|\#] one
+[;+=´´)ú¨§ů-.,-*/+_:\()\@&|\#] one
 [two] ;+=´´)ú¨§ů-.,-*/+_:\\()\@&/|\#/
-[;+=´´)ú¨§ů-.,-*/+_:\\()\@&|\#/] three ;+=´´)ú¨§ů-.,-*/+_:\\()\@&|\#/
+[;+=´´)ú¨§ů-.,-*/+_:\()\@&|\#/] three ;+=´´)ú¨§ů-.,-*/+_:\\()\@&|\#/
 /@
 div #wrapper
     @block div #block-[@] .block .someClass 
@@ -44,3 +44,15 @@ div #wrapper
         Footer here
     block [4] Some text behind
         div #innerBlock
+div
+    div
+        div
+            @ a [@] data-selected-window="[@]" data-selected-window-label="[@]" |
+            [$Admin:signOut][][] #signOut .text-normal Sign out
+            [3$button][images][Images] Images
+            [3$button][articles][Articles] Articles
+            [3$button][tags][Tags] Tags
+
+             /@
+        div #admWindowWrapper .s-hidden
+        div #somecontent

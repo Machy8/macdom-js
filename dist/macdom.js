@@ -6,308 +6,299 @@
 
 	// Helpers definition
 
-	/**
-	 * @param string txt
-	 * @returns {string}
-	 */
-	var ltrim = function (txt) {
-		return txt.replace(/^\s+/, "");
-	};
+	var
+		emptyStringArrayFilter = function (array) {
+			var item,
+				newArray = [];
 
-	/**
-	 * @param string str
-	 * @returns {string}
-	 */
+			for (item of array) {
+				if(item.trim().length) newArray.push(item);
+			}
+
+			return newArray;
+		},
+
+		ltrim = function (txt) {
+			return txt ? txt.replace(/^\s+/, "") : txt;
+		},
+
+		inArray = function (needle, haystack, returnKey) {
+			var key = haystack.indexOf(needle);
+
+			if (returnKey)
+				return key >= 0 ? key : 0;
+
+			return key >= 0;
+		},
+
+		arrayKeyExists = function (key, haystack) {
+			return haystack.hasOwnProperty(key);
+		},
+
+		matchAll = function (pattern, subject) {
+			var match,
+				matches = [];
+
+			while (match = pattern.exec(subject)) {
+				matches.push(match);
+			}
+
+			matches = matches.length ? matches : null;
+
+			return matches;
+		};
+
 	RegExp.quote = function (str) {
 		return (str + '').replace(/[.?*+^$[\]\\(){}|-]/g, "\\$&");
-	};
-
-	/**
-	 * @param string needle
-	 * @param array haystack
-	 * @returns {boolean}
-	 */
-	var inArray = function (needle, haystack, returnKey) {
-		var key = haystack.indexOf(needle);
-		if (returnKey)
-			return key >= 0 ? key : 0;
-		return key >= 0;
-	};
-
-	/**
-	 * @param string|int key
-	 * @param string haystack
-	 * @returns {boolean}
-	 */
-	var arrayKeyExists = function (key, haystack) {
-		return haystack.hasOwnProperty(key);
-	};
-
-	/**
-	 * @param string subject
-	 * @param string pattern
-	 * @returns {array}
-	 */
-	var matchAll = function (pattern, subject) {
-		var match,
-			matches = [];
-		while (match = pattern.exec(subject)) {
-			matches.push(match);
-		}
-		matches = matches.length ? matches : null;
-		return matches;
-	};
-
-	/**
-	 * @param string re
-	 * @returns {RegExp}
-	 */
-	var reG = function (re) {
-		return new RegExp(re, 'g');
 	};
 
 	/** Classes definition */
 	var Compiler = {},
 		Elements = {},
 		Macros = {},
-		Replicator = {};
-	Macros.macros = {};
+		Replicator = {},
+		Setup;
+		Macros.macros = {};
 
-	Compiler.construct = function (s) {
-		var closeSelfClosingTags = s.closeSelfClosingTags || false,
-			booleansWithValue = s.booleansWithValue || false,
-			preferXhtml = s.preferXhtml || false;
+	Compiler.construct = function () {
+		var inlineOpenTags, element, tag, reCloseTag,
+			skipElements = Setup.skipElements || '',
+			ncaSkipElements = ['script', 'style', 'textarea', 'code'];
 
-		if (preferXhtml)
-			closeSelfClosingTags = booleansWithValue = true;
+			skipElements = skipElements.split(' ');
 
 		this.AREA_TAG = 'SKIP';
-		this.finallCodeIndentation = s.finallCodeIndentation || "tabs";
-		this.lvlIndentation = "";
-		this.skippedTagLvl = null;
-		this.skippedTags = s.skippedTags || [];
-		this.preferXhtml = preferXhtml;
-		this.closeSelfClosingTags = closeSelfClosingTags;
-		this.booleansWithValue = booleansWithValue;
+
+		if (Setup.preferXhtml) Setup.closeSelfClosingTags = Setup.booleansWithValue = true;
+
 		this.closeTags = [];
-		this.codeStorage = "";
-		this.inNoCompileArea = false;
-		this.skipRow = false;
-		this.noCompileAreaClosed = null;
-		this.lnBreak = s.compressCode ? '' : "\n";
-		this.spacesPerIndent = s.spacesPerIndent || 4;
-		this.structureHtmlSkeleton = s.structureHtmlSkeleton || true;
-		this.indentMethod = s.indentMethod || 3;
-		this.ncaCloseTags = s.ncaCloseTags || [];
-		this.ncaOpenTags = s.ncaOpenTags || [];
-		this.ncaRegExpInlineTags = s.ncaRegExpInlineTags || [];
-		this.ncaRegExpOpenTags = s.ncaRegExpOpenTags || [];
-		this.ncaRegExpCloseTags = s.ncaRegExpCloseTags || [];
-	};
+		this.outputQueue = [];
+		this.outputStorage = '';
+		this.prevOutput = [];
+		this.inNoCompileArea = this.skipRow = false;
+		this.noCompileAreaClosed = true;
+		this.skippedElementLvl = null;
+		this.ncaSkipElements = emptyStringArrayFilter(ncaSkipElements.concat(skipElements));
+		this.ncaOpenTags = [this.AREA_TAG];
+		this.ncaCloseTags = ['/' + this.AREA_TAG];
+		inlineOpenTags = this.ncaSkipElements.join('|');
+		this.ncaRegExpInlineTags = [new RegExp('\<(?:' + inlineOpenTags + ') *[^>]*\>.*\<\/(?:' + inlineOpenTags + ')\>')];
+		this.ncaRegExpOpenTags = [new RegExp('\<(?:' + inlineOpenTags + ') *[^\>]*\>')];
+		this.ncaRegExpCloseTags = [];
 
-	Elements.construct = function (s) {
-		var attributes,
-			that = Elements;
-
-		if (s.addBooleanAttributes) {
-			attributes = s.addBooleanAttributes.split(" ");
-			this.booleanAttributes = this.booleanAttributes.concat(attributes);
+		for (element of this.ncaSkipElements) {
+			this.ncaCloseTags.push('</' + element + '>');
+			this.ncaOpenTags.push('<' + element + '>');
 		}
 
-		if (s.changeQkAttributes) {
-			Elements.changeQkAttributes(s.changeQkAttributes);
-		}
-
-		if (s.removeBooleanAttributes) {
-			Elements.removeBooleanAttributes(s.removeBooleanAttributes);
-		}
-
-		if (s.addElements) {
-			Elements.addElements(s.addElements);
-		}
-
-		if (s.removeElements) {
-			Elements.removeElements(s.removeElements);
+		for (tag of this.ncaSkipElements) {
+			reCloseTag = new RegExp('</'+tag+'>');
+			this.ncaRegExpCloseTags.push(reCloseTag);
 		}
 	};
 
-	Macros.construct = function (s) {
-		var macroKey, macros,
-			that = Macros;
+	Elements.construct = function () {
 
-		if (s.addMacros) {
-			macros = s.addMacros;
+		this.addBooleanAttributes(Setup.addBooleanAttributes);
+		this.changeQkAttributes(Setup.changeQkAttributes);
+		this.removeBooleanAttributes(Setup.removeBooleanAttributes);
+		this.addElements(Setup.addElements);
+		this.removeElements(Setup.removeElements);
+		this.addQkAttributes(Setup.addQkAttributes);
+
+	};
+
+	Macros.construct = function () {
+		var macroKey, macros;
+
+		if (Setup.addMacros) {
+			macros = Setup.addMacros;
+
 			for (macroKey in macros) {
-				that.addMacro(macroKey, macros[macroKey]);
+				this.addMacro(macroKey, macros[macroKey]);
 			}
 		}
 
-		if (s.removeMacros) {
-			that.removeMacros(s.removeMacros);
-		}
+		this.removeMacros(Setup.removeMacros);
+
 	};
 
-	Replicator.construct = function (s) {
+	Replicator.construct = function () {
 		this.REG_EXP_A = /\[(.*?)\]/g;
 		this.REG_EXP_B = /\[@\]/;
 		this.REG_EXP_B_g = /\[@\]/g;
 		this.REG_EXP_C = /^@([\S]*)/;
 		this.REG_EXP_D = /^\/@([\S]*)/;
-		this.SUFFIX = '-x';
 		this.register = {};
 	};
 
-	/**
-	 * @param string content
-	 * @returns {string}
-	 */
 	Compiler.compile = function (content) {
-		var indentation, i, ln, lvl, txt, element, noCompileAreaTag, replicatorResult, clearedText, attributes, macro, macroExists, re,
-			that = Compiler,
-			lns = content.split(/\n/);
+		var ln, lvl, element, noCompileAreaTag, compilationAllowed, replicatorResult, processElement, txt, attributes, isJsCssLink, isJsCss, attr, type, macro;
 
 		if (!content) return '';
 
-		for (ln of lns) {
-			lvl = that.getLnLvl(ln);
-			txt = that.getLnTxt(ln);
-			element = that.getElement(ln);
-			noCompileAreaTag = that.detectNoCompileArea(txt, element, lvl);
+		for (ln of content.split("\n")) {
+			lvl = this.getLnLvl(ln);
+			element = this.getElement(ln);
+			noCompileAreaTag = this.detectNoCompileArea(ln, element, lvl);
+			compilationAllowed = !this.inNoCompileArea && !this.skipRow && this.noCompileAreaClosed;
 
-			if (this.lnBreak) {
-				indentation = "\t";
-				if (that.finallCodeIndentation === "spaces") {
-					indentation = '    ';
-				}
+			if (noCompileAreaTag || compilationAllowed && !ln) continue;
 
-				that.lvlIndentation = '';
-				for (i = 0; i < lvl; i++) {
-					that.lvlIndentation += indentation;
-				}
+			if (Setup.structureHtmlSkeleton) {
+				lvl = inArray(element, ['head', 'body']) ? 1 : lvl + 1;
+				if (element === 'html') lvl = 0;
 			}
 
-			if (that.structureHtmlSkeleton && element === "html") {
-				lvl = 0;
-			} else if (that.structureHtmlSkeleton && element !== "html") {
-				lvl = inArray(element, ["html", "body"]) ? 1 : lvl + 1;
+			if (compilationAllowed && ln && !Elements.findElement(element)) {
+				ln = ln.replace(/\|$/, '');
+				replicatorResult = Replicator.detect(lvl, element, ln);
+
+				if (replicatorResult['toReplicate']) {
+					ln = replicatorResult['toReplicate'];
+					element = this.getElement(ln);
+				}
+
+				if (replicatorResult['clearLn']) ln = element = null;
 			}
 
-			if (txt && !noCompileAreaTag && ltrim(txt).length && !that.inNoCompileArea && !that.skipRow && that.noCompileAreaClosed === null && !Elements.findElement(element, false) && !(txt.trim()).match(/^[<*]+/)) {
-				replicatorResult = Replicator.detect(lvl, element, txt);
-				if (replicatorResult['replicate']) {
-					txt = that.getLnTxt(replicatorResult['line']);
-					element = that.getElement(txt);
-				}
-				if (replicatorResult['clearLine']) {
-					txt = null;
-					element = false;
-				}
-			}
+			processElement = compilationAllowed && Elements.findElement(element);
+			txt = this.getLnTxt(ln, compilationAllowed, processElement);
 
-			if (Elements.findElement(element, false) && !that.inNoCompileArea && !that.skipRow) {
-				clearedText = txt.replace(element, '');
-				attributes = that.processLnAttributes(clearedText);
-				that.addOpenTag(element, lvl, attributes);
+			if (processElement) {
+				attributes = this.processLn(txt);
+				this.addOpenTag(element, lvl, attributes);
+
 			} else if (txt) {
-				that.addCloseTags(lvl);
-				if (!that.inNoCompileArea && !noCompileAreaTag && !that.skipRow) {
-					macro = Macros.replace(element, txt);
-					macroExists = macro['exists'];
-					that.codeStorage += macroExists ? that.lvlIndentation + macro['replacement'] + that.lnBreak : that.lvlIndentation + txt + that.lnBreak;
-				} else if (that.inNoCompileArea || that.skipRow) {
-					that.codeStorage += !noCompileAreaTag ? that.lvlIndentation + txt + that.lnBreak : "";
+				this.addCloseTags(lvl);
+				isJsCssLink = this.getElement(txt);
+				isJsCss = isJsCssLink.match(/\.((?:css|js))$/);
+
+				if (compilationAllowed && isJsCss) {
+					if (isJsCss[1] === "css") {
+						element = "link";
+						attr = "href";
+						type = 'rel="stylesheet" type="text/css"';
+
+					} else {
+						element = "script";
+						attr = "src";
+						type = 'type="text/javascript"';
+
+					}
+
+					txt = this.getLnTxt(txt, true, true);
+					txt = ' ' + type + ' ' + attr + '="' + isJsCssLink + '"' + txt;
+					attributes = this.processLn(txt);
+					attributes['txt'] = null;
+					this.addOpenTag(element, lvl, attributes);
+
+				} else {
+					macro = compilationAllowed && Macros.findMacro(element);
+					content = macro ? Macros.replace(element, txt) : txt;
+					type = macro ? 'macro' : 'text';
+					this.addToQueue(type, content, lvl);
 				}
 			}
 		}
 
-		that.addCloseTags(0);
-		return that.codeStorage;
+		this.addCloseTags();
+		this.composeContent();
+
+		return this.outputStorage;
 	};
 
-	/**
-	 * @param string ln
-	 * @returns {int}
-	 */
 	Compiler.getElement = function (ln) {
-		var element = (ln.trim()).split(" ");
+		var element = ln.trim().split(" ");
+
 		return element[0];
 	};
 
-	/** @param string ln */
-	Compiler.getLnTxt = function (ln) {
-		return ltrim(ln);
+	Compiler.getLnTxt = function (ln, clean, elementExists) {
+		var element, re,
+			clean = clean || false,
+			elementExists = elementExists || false,
+			find = [new RegExp(' *' + this.AREA_TAG + '(?:-CONTENT)?')],
+			txt = ltrim(ln);
+
+		if (elementExists) {
+			txt = txt.split(' ').slice(1).join(' ');
+			txt = ' ' + txt;
+		}
+
+		if (clean) find.push(/^\|/);
+
+		if (txt) {
+			for(re of find) {
+				txt = txt.replace(re, '');
+			}
+		}
+
+		return txt;
 	};
 
-	/**
-	 * @param string ln
-	 * @returns {int}
-	 */
 	Compiler.getLnLvl = function (ln) {
-		var method, whites, spaces, tabulators, matches, re;
+		var spaces, tabulators,
+			method = Setup.indentMethod,
+			matches = ln.match(/^\s+/) || null,
+			whites = matches ? matches[0] : "",
+			re = new RegExp(" {" + Setup.spacesPerIndent + "}", "g");
 
-		method = this.indentMethod;
-		matches = ln.match(/^\s+/) || null;
-		whites = matches ? matches[0] : "";
-
-		re = new RegExp(" {" + this.spacesPerIndent + "}", "g");
-		spaces = method === 1 || method === 3 ? whites.match(re) : 0;
+		spaces = method === 'spaces' || method === 'combined' ? whites.match(re) : 0;
 		spaces = spaces ? spaces.length : 0;
 
-		tabulators = method === 2 || method === 3 ? whites.match(/\t/g) : 0;
+		tabulators = method === 'tabs' || method === 'combined' ? whites.match(/\t/g) : 0;
 		tabulators = tabulators ? tabulators.length : 0;
-		if (method === 3) tabulators *= 2;
+
+		if (method === 'combined') tabulators *= 2;
 
 		return spaces + tabulators;
 	};
 
-	/** @param int lvl */
 	Compiler.addCloseTags = function (lvl) {
-		var lasTag = this.closeTags.length,
-			length = lasTag,
-			i;
-		if (length > 0) {
-			for (i = length - 1; i >= 0; i--) {
-				if (lvl <= this.closeTags[i][0]) {
-					this.codeStorage += this.closeTags[i][1];
-					lasTag = i;
-				} else {
-					break;
-				}
-			}
-			this.closeTags.splice(lasTag, this.closeTags.length);
+		var i,
+			lvl = lvl || 0,
+			lastTag = this.closeTags.length;
+
+		for (i = lastTag - 1; i >= 0; i--) {
+			if (lvl > this.closeTags[i][0]) break;
+
+			this.addToQueue('closeTag', this.closeTags[i][1], this.closeTags[i][0]);
+			lastTag = i;
+
 		}
+
+		this.closeTags.splice(lastTag, this.closeTags.length);
 	};
 
-	/**
-	 * @param string element
-	 * @param int lvl
-	 * @param object attributes
-	 */
 	Compiler.addOpenTag = function (element, lvl, attributes) {
-		var newAttr, paramKey, selfClosing, attribute, key, closeTag, singleLvl, textIndentation,
-			usedKeys = [],
-			withoutKey = 0,
-			that = Compiler,
-			indentation = that.lvlIndentation,
+		var usedKeys, withoutKey, newAttr, paramKey, selfClosing, type, closeTag, txt, attribute,
 			elementSettings = Elements.findElement(element, true),
-			openTag = indentation + '<' + element;
+			openTag = '<' + element,
+			sQkAttributes = elementSettings['qkAttributes'],
+			qkAttributes = attributes['qkAttributes'];
 
-		if (elementSettings['qkAttributes'] && attributes['qkAttributes']) {
-			for (attribute in attributes['qkAttributes']) {
-				key = attribute;
-				attribute = attributes["qkAttributes"][key];
+		if (sQkAttributes && qkAttributes) {
+			usedKeys = [];
+			withoutKey = 0;
+
+			for (attribute of qkAttributes) {
 				newAttr = null;
+
 				if (attribute['key']) {
 					paramKey = attribute['key'] - 1;
-					if (typeof elementSettings['qkAttributes'][paramKey] !== 'undefined') {
-						newAttr = elementSettings['qkAttributes'][paramKey] + '="' + attribute['value'] + '"';
+
+					if (arrayKeyExists(paramKey, sQkAttributes)) {
+						newAttr = sQkAttributes[paramKey] + '="' + attribute['value'] + '"';
 						usedKeys.push(paramKey);
 					}
-				} else if (!inArray(withoutKey, usedKeys) && arrayKeyExists(withoutKey, elementSettings['qkAttributes'])) {
-					newAttr = elementSettings['qkAttributes'][withoutKey] + '="' + attribute['value'] + '"';
+
+				} else if (!inArray(withoutKey, usedKeys) && arrayKeyExists(withoutKey, sQkAttributes)) {
+					newAttr = sQkAttributes[withoutKey] + '="' + attribute['value'] + '"';
 					withoutKey++;
 				}
-				openTag += newAttr ? ' ' + newAttr : "";
+
+				openTag += newAttr ? ' ' + newAttr : '';
 			}
 		}
 
@@ -315,31 +306,31 @@
 		openTag += attributes['htmlAttributes'] + attributes['booleanAttributes'];
 
 		// Close the open tag, add close tags if needed
-		selfClosing = elementSettings['paired'] || !that.closeSelfClosingTags ? '' : ' /';
-		openTag += selfClosing + '>' + that.lnBreak;
-		that.addCloseTags(lvl);
-		that.codeStorage += openTag;
+		selfClosing = elementSettings['paired'] || !Setup.closeSelfClosingTags ? '' : ' /';
+		openTag += selfClosing + '>';
+		this.addCloseTags(lvl);
+		type = elementSettings['paired'] ? 'openTag' : 'inlineTag';
+		this.addToQueue(type, openTag, lvl);
+
 		// If the tag is paired add its close tag to the storage
 		if (elementSettings['paired']) {
-			singleLvl = '';
-			if (that.lnBreak)
-				singleLvl = that.finallCodeIndentation === "spaces" ? '    ' : "\t";
-			textIndentation = indentation + singleLvl;
-			that.codeStorage += attributes['txt'] ? textIndentation + attributes['txt'] + that.lnBreak : "";
-			closeTag = indentation + '</' + element + '>' + that.lnBreak;
-			that.closeTags.push([lvl, closeTag]);
+			txt = attributes['txt'];
+
+			if (txt) {
+				this.addToQueue('text', txt, lvl);
+			}
+
+			closeTag = '</' + element + '>';
+			this.closeTags.push([lvl, closeTag]);
 		}
 	};
 
-	/**
-	 * @param string txt
-	 * @returns {{qkAttributes: Array, htmlAttributes: string, booleanAttributes: string, txt: string}}
-	 */
-	Compiler.processLnAttributes = function (txt) {
-		var value, i, classes, newHref, htmlAttributes, htmlClsSelector, re, reAll, idSelector, attribute, matches, txt2array, match, paramVal, clsSelectors, qkAttributes, booleanAttributes, paramKey, txtFromTag2End;
+	Compiler.processLn = function (txt) {
+		var value, i, classes, newHref, htmlAttributes, htmlClsSelector, re, reAll, idSelector, attribute, matches,
+			txt2array, match, paramVal, clsSelectors, qkAttributes, booleanAttributes, paramKey, txtFromTag2End;
 
 		// Store the text from the first tag to the end of the line
-		re = /\<.*$/;
+		re = / <[\w-]+ .*$/;
 		txtFromTag2End = '';
 		if (match = txt.match(re)) {
 			txt = txt.replace(re, '');
@@ -360,7 +351,6 @@
 		re = / [\w:-]+="[^"]*"| [\w:-]+='[^']*'| [\w:-]+=\S+/g;
 		matches = matchAll(re, txt);
 		htmlAttributes = '';
-
 		if (matches) {
 			txt = txt.replace(re, '');
 			htmlAttributes = matches.join("");
@@ -369,9 +359,7 @@
 		// Get the id selector
 		re = / #(\S+)/;
 		idSelector = txt.match(re);
-		if (idSelector && !htmlAttributes.match(/ id="[^"]+"|  id='[^']+'| id=[\S]+/))
-			htmlAttributes += ' id="' + idSelector[1] + '"';
-
+		if (idSelector && !htmlAttributes.match(/ id="[^"]+"|  id='[^']+'| id=[\S]+/)) htmlAttributes += ' id="' + idSelector[1] + '"';
 		if (idSelector) {
 			while (match = re.exec(txt)) {
 				txt = txt.replace(re, '');
@@ -382,12 +370,13 @@
 		re = / \.(\S+)/g;
 		matches = matchAll(re, txt);
 		clsSelectors = '';
-
 		if (matches) {
 			txt = txt.replace(re, '');
+
 			for (match of matches) {
 				clsSelectors += " " + match[1];
 			}
+
 			clsSelectors = ltrim(clsSelectors);
 		}
 
@@ -402,9 +391,9 @@
 				}
 			}
 			htmlAttributes = htmlAttributes.replace(re, ' class="' + htmlClsSelector + ' ' + clsSelectors + '"');
+
 		} else if (clsSelectors) {
 			htmlAttributes += ' class="' + clsSelectors + '"';
-
 		}
 
 		// Get all quick attributes
@@ -413,10 +402,13 @@
 		matches = matchAll(re, txt);
 		if (matches) {
 			txt = txt.replace(re, '');
+
 			for (i = 0; i < matches.length; i++) {
 				attribute = matches[i];
 				paramVal = attribute[attribute.length - 1] || attribute[attribute.length - 2];
+
 				if (paramVal && paramVal.toLowerCase() !== 'null') {
+
 					// If quick attribute is without index
 					paramKey = !isNaN(parseFloat(attribute[1])) && isFinite(attribute[1]) ? attribute[1] : null;
 					qkAttributes.push({
@@ -428,7 +420,7 @@
 		}
 
 		// Get the text
-		txt = Compiler.getLnTxt(txt) + txtFromTag2End;
+		txt = this.getLnTxt(txt, true) + txtFromTag2End;
 
 		// Split the txt to an array in oder to get the boolean attributes
 		txt2array = txt.split(' ');
@@ -437,7 +429,8 @@
 			if (Elements.isBoolean(attribute)) {
 				txt = txt.replace(attribute, '');
 				booleanAttributes += ' ' + attribute;
-				booleanAttributes += this.booleansWithValue ? '="' + attribute + '"' : '';
+				booleanAttributes += Setup.booleansWithValue ? '="' + attribute + '"' : '';
+
 			} else {
 				break;
 			}
@@ -452,69 +445,72 @@
 		};
 	};
 
-	/**
-	 * @param string txt
-	 * @returns {boolean}
-	 */
 	Compiler.detectNoCompileArea = function (txt, element, lvl) {
-		var areaClosed, matchedTag, tag, re, tagDetected,
-			that = Compiler,
-			skipTagClose = '/' + that.AREA_TAG,
-			skippedTags = ["style", "script", "code"].concat(that.skipTags),
-			openTags = ['<style>', '<script>', '<?php', '<?', that.AREA_TAG].concat(that.ncaOpenTags),
-			closeTags = ['</style>', '</script>', '?>', skipTagClose].concat(that.ncaCloseTags),
-			regExpInlineTags = [/^\s*\<(?:\?|php) .*\?\>/, /^\s*\<(?:script|style) *[^>]*\>.*\<\/(?:style|script)\>/].concat(that.ncaRegExpInlineTags),
-			regExpOpenTags = [/^\s*\<(?:script|style) *[^>]*\>/].concat(that.ncaRegExpOpenTags),
-			regExpCloseTags = [/.*\<\/(?:style|script)\>$/, /.*\?\>$/, skipTagClose].concat(that.ncaRegExpCloseTags);
+		var areaClosed, matchedTag, tag, re, tagDetected, txt2array,
+			skipContent = false,
+			skipRow = false,
+			skipTagClose = '/' + this.AREA_TAG;
 
 		txt = txt.trim();
 
-		if (that.skipRow)
-			that.skipRow = that.inNoCompileArea = false;
+		if (this.skipRow) this.skipRow = this.inNoCompileArea = false;
 
-		areaClosed = that.inNoCompileArea ? false : null;
+		areaClosed = !this.inNoCompileArea;
 
-		if (inArray(element, skippedTags) && that.skippedTagLvl === null) {
-			that.skippedTagLvl = lvl;
-		} else if (that.skippedTagLvl !== null && lvl > that.skippedTagLvl) {
-			this.skipRow = true;
-		} else if (that.skippedTagLvl !== null && lvl <= that.skippedTagLvl && inArray(element, skippedTags)) {
-			that.skippedTagLvl = lvl;
-		} else {
-			that.skippedTagLvl = null;
+		if (areaClosed) {
+			txt2array = txt.split(' ');
+
+			if (txt2array[txt2array.length-1] === this.AREA_TAG && txt2array.length > 1) {
+				skipRow = true;
+
+			} else if (txt2array[txt2array.length-1] === this.AREA_TAG + '-CONTENT') {
+				skipContent = true;
+			}
 		}
 
-		if (!that.skippedTagLvl) {
-			if (inArray(txt.trim(), openTags)) {
-				that.inNoCompileArea = true;
-			} else if (inArray(txt.trim(), closeTags)) {
-				that.inNoCompileArea = false;
+		if (inArray(element, this.ncaSkipElements) && (this.skippedElementLvl === null || this.skippedElementLvl !== null && lvl <= this.skippedElementLvl) || skipContent) {
+			this.skippedElementLvl = lvl;
+
+		} else if (this.skippedElementLvl !== null && lvl > this.skippedElementLvl || skipRow) {
+			this.skipRow = true;
+
+		} else {
+			this.skippedElementLvl = null;
+		}
+
+		if (!this.skippedElementLvl) {
+			if (inArray(txt.trim(), this.ncaOpenTags)) {
+				this.inNoCompileArea = true;
+
+			} else if (inArray(txt.trim(), this.ncaCloseTags)) {
+				this.inNoCompileArea = false;
+
 			} else {
 				matchedTag = false;
 
-				if (!that.inNoCompileArea) {
-					for (tag of regExpInlineTags) {
+				if (!this.inNoCompileArea) {
+					for (tag of this.ncaRegExpInlineTags) {
 						if (txt.match(tag)) {
-							matchedTag = that.skipRow = true;
+							matchedTag = this.skipRow = true;
 							break;
 						}
 					}
 				}
 
-				if (!matchedTag && !that.inNoCompileArea) {
-					for (tag of regExpOpenTags) {
+				if (!matchedTag && !this.inNoCompileArea) {
+					for (tag of this.ncaRegExpOpenTags) {
 						if (txt.match(tag)) {
-							matchedTag = that.inNoCompileArea = true;
+							matchedTag = this.inNoCompileArea = true;
 							break;
 						}
 					}
 				}
 
-				if (!matchedTag && that.inNoCompileArea) {
-					for (tag of regExpCloseTags) {
+				if (!matchedTag && this.inNoCompileArea) {
+					for (tag of this.ncaRegExpCloseTags) {
 						if (txt.match(tag)) {
-							that.skipRow = true;
-							that.inNoCompileArea = false;
+							this.skipRow = true;
+							this.inNoCompileArea = false;
 							break;
 						}
 					}
@@ -522,255 +518,200 @@
 			}
 		}
 
-		tagDetected = txt === that.AREA_TAG || txt === skipTagClose;
+		tagDetected = txt === this.AREA_TAG || txt === skipTagClose;
 
 		// Set and return
-		that.noCompileAreaClosed = areaClosed;
+		this.noCompileAreaClosed = areaClosed;
 		return tagDetected;
 	};
 
-	/**
-	 * @param int lvl
-	 * @param string element
-	 * @param string line
-	 * @returns {{replicate: boolean, clearLine: boolean, line: boolean}}
-	 */
-	Replicator.detect = function (lvl, element, line) {
-		var deregister, isRegistered, key,
-			that = Replicator,
-			replicate, clearLine = false,
-			replacement = null,
-			registrationLine = line.match(that.REG_EXP_C);
-		if (registrationLine) {
-			clearLine = true;
-			line = line.replace(RegExp.quote(element), '');
+
+	Compiler.addToQueue = function (type, content, lvl) {
+		var formatting = !this.inNoCompileArea && !this.skipRow,
+			lastKey = this.outputQueue.length - 1,
+			contentArr = {
+				type: type,
+				content: content,
+				lvl: lvl,
+				formatting: formatting
+			};
+
+		if (type === 'text' && Setup.compressText && formatting && arrayKeyExists(lastKey, this.outputQueue) && this.outputQueue[lastKey]['type'] === 'text' && this.outputQueue[lastKey]['formatting']) {
+			this.outputQueue[lastKey]['content'] += content;
+			return;
 		}
-		deregister = that.deregisterLvl(lvl, element);
-		if (!deregister && line.length) {
-			isRegistered = that.isRegistered(lvl, element, line, registrationLine);
-			if (isRegistered['registered'] && !registrationLine) {
-				replicate = true;
-				// If the first word on line is also the part of the key in the register
-				key = isRegistered['key'];
-				replacement = key === true
-					? that.replicate(isRegistered['registerId'], line, element, key)
-					: that.replicate(isRegistered['registerId'], line, null, false);
+
+		this.outputQueue.push(contentArr);
+
+		if (type !== 'text') this.composeContent();
+	};
+
+	Compiler.composeContent = function () {
+		var contentKey, contentArr, lvl, nextOutputKey, nextOutputType, trio, method, indentation, lnBreak;
+		for (contentKey in this.outputQueue) {
+			contentArr = this.outputQueue[contentKey];
+
+			if (!Setup.compressCode) {
+				lvl = contentArr['lvl'];
+				nextOutputKey = contentKey + 1;
+				nextOutputType = arrayKeyExists(nextOutputKey, this.outputQueue) ? this.outputQueue[nextOutputKey]['type'] : '';
+
+				// WTF condition for output formatting
+				trio = ['openTag', 'inlineTag', 'macro'];
+
+				if (typeof this.prevOutput['type'] !== 'undefined' && (!this.prevOutput['formatting'] || inArray(this.prevOutput['type'], ['closeTag', 'inlineTag', 'macro']) || inArray(contentArr['type'], trio)
+					|| contentArr['type'] === 'closeTag' && (this.prevOutput['type'] === 'text' && (!Setup.compressText || this.prev2OutputType !== 'openTag'))
+					|| contentArr['type'] === 'text' && (!Setup.compressText || Setup.compressText && (!contentArr['formatting'] || this.prevOutput['type'] === 'openTag' && inArray(nextOutputType, trio))))
+				) {
+					if (contentArr['formatting'] && contentArr['type'] === 'text') {
+						if (!Setup.compressText && lvl === this.prevOutput['lvl'] && this.prevOutput['type'] === 'openTag') {
+							lvl++;
+
+						} else if (Setup.compressText && (this.prevOutput['type'] === 'text' && this.prevOutput['formatting'] || this.prevOutput['type'] === 'openTag')) {
+							lvl = this.prevOutput['lvl'] + 1;
+						}
+					}
+					lvl += Setup.structureHtmlSkeleton && lvl > 0 ? -1 : 0;
+					method = Setup.outputIndentation === 'spaces' ? '    ' : "\t";
+					indentation = method.repeat(lvl);
+					lnBreak = Setup.compressCode ? '' : "\n";
+					this.outputStorage += lnBreak + indentation;
+				}
+				this.prev2OutputType = this.prevOutput['type'];
+				this.prevOutput = contentArr;
 			}
-		} else {
-			clearLine = true;
+			this.outputStorage += contentArr['content'];
 		}
+		this.outputQueue = [];
+	};
+
+	Replicator.detect = function (lvl, element, txt) {
+		var deregLn, regLn, re, regLnKey,
+			key = element.match(this.REG_EXP_C),
+			clearLn = false,
+			replacement = null;
+
+		if (key) {
+			clearLn = true;
+			txt = ltrim(txt).replace(key[0], '');
+			regLnKey = arrayKeyExists(1, key) ? key[1] : null;
+			this.registerLvl(regLnKey, lvl, txt);
+		}
+
+		deregLn = element.match(this.REG_EXP_D);
+		if (!deregLn && !key) {
+
+			regLn = this.isRegistered(lvl, element);
+
+			if (regLn['ln']) {
+				re = new RegExp(RegExp.quote(element));
+
+				if (regLn['key']) txt = txt.replace(re, '');
+
+				replacement = this.synchronizeLines(txt, regLn['ln']);
+			}
+
+		} else if (deregLn) {
+			clearLn = true;
+			this.deregisterLvl(lvl, deregLn[1]);
+		}
+
 		return {
-			replicate: replicate,
-			clearLine: clearLine,
-			line: replacement
-		};
+			clearLn: clearLn,
+			toReplicate: replacement
+		}
 	};
 
-	/**
-	 * @param int registerId
-	 * @param string line
-	 * @param string element
-	 * @param boolean key
-	 * @returns {string}
-	 */
-	Replicator.replicate = function (registerId, line, element, key) {
-		var replicatedLine,
-			that = Replicator,
-			contentArrays = matchAll(that.REG_EXP_A, line);
-		if (key)
-			line = line.replace(RegExp.quote(element), '');
-		replicatedLine = contentArrays
-			? that.synchronizeLines(line, registerId, contentArrays)
-			: that.synchronizeLines(line, registerId, null);
-		return replicatedLine;
-	};
+	Replicator.synchronizeLines = function (ln, regLn) {
+		var clear, match,
+			matches = matchAll(this.REG_EXP_A, ln);
 
-	/**
-	 * @param string line
-	 * @param string registerId
-	 * @param array matches
-	 * @returns {string}
-	 */
-	Replicator.synchronizeLines = function (line, registerId, matches) {
-		var exists, clear, match, re,
-			that = Replicator,
-			reB = that.REG_EXP_B,
-			registeredLine = that.register[registerId];
 		if (matches) {
 			for (match of matches) {
-				exists = registeredLine.match(reB);
-				if (exists) {
-					registeredLine = registeredLine.replace(reB, match[1]);
-					line = ltrim(line.replace(match[0], ''));
-				} else {
-					break;
-				}
+				regLn = regLn.replace(this.REG_EXP_B, match[1]);
+				ln = ln.replace(match[0], '');
 			}
 		}
-		re = that.REG_EXP_B_g;
-		clear = registeredLine.replace(re, '');
-		return (clear + line).trim();
+
+		ln = ltrim(ln.replace(this.REG_EXP_A, ''));
+		clear = regLn.replace(this.REG_EXP_B, '');
+
+		return (clear + ln).trim();
 	};
 
-	/**
-	 * @param int lvl
-	 * @param string element
-	 * @returns {boolean}
-	 */
-	Replicator.deregisterLvl = function (lvl, element) {
-		var selected,
-			that = Replicator,
-			unregistered = false,
-			match = element.match(that.REG_EXP_D);
-		if (match) {
-			selected = lvl + that.SUFFIX;
-			if (match[1].length) {
-				selected = lvl + '-' + match[1];
-				if (that.register[selected]) {
-					delete that.register[selected];
-					unregistered = true;
-				}
-			} else if (that.register[selected]) {
-				delete that.register[selected];
-				unregistered = true;
-			}
-		}
-		return unregistered;
+	Replicator.deregisterLvl = function (lvl, ln) {
+		var selected = ln ? lvl + '-' + ln : lvl + '-x';
+
+		if (arrayKeyExists(selected, this.register)) delete this.register[selected];
 	};
 
-	/**
-	 * @param int lvl
-	 * @param string element
-	 * @param string line
-	 * @param string registrationLine
-	 * @returns {{registered: boolean, key: boolean, registerId: *}}
-	 */
-	Replicator.isRegistered = function (lvl, element, line, registrationLine) {
-		var registerLvl,
-			that = Replicator,
-			registered = false,
-			key = false,
-			registerId = null;
+	Replicator.isRegistered = function (lvl, el) {
+		var ln = null,
+			key = false;
 
-		if (!registrationLine) {
-			if (arrayKeyExists(lvl + '-' + element, that.register)) {
-				registered = key = true;
-				registerId = lvl + '-' + element;
-			} else if (arrayKeyExists(lvl + that.SUFFIX, that.register)) {
-				registered = true;
-				registerId = lvl + that.SUFFIX;
-			}
+		if (arrayKeyExists(lvl + '-' + el, this.register)) {
+			ln = this.register[lvl + '-' + el];
+			key = true;
+
+		} else if (arrayKeyExists(lvl + '-x', this.register)) {
+			ln = this.register[lvl + '-x'];
 		}
-		if (!registered || registrationLine) {
-			registerLvl = that.registerLvl(element, line, lvl);
-			registered = registerLvl['registered'];
-			registerId = registerLvl['registerId'];
-		}
+
 		return {
-			registered: registered,
-			key: key,
-			registerId: registerId
+			ln: ln,
+			key: key
 		};
 	};
 
-	/**
-	 * @param string element
-	 * @param string line
-	 * @param int lvl
-	 * @returns {{registered: boolean, registerId: string}}
-	 */
-	Replicator.registerLvl = function (element, line, lvl) {
-		var that = Replicator,
-			registered = false,
-			registerId = null,
-			matches = element.match(that.REG_EXP_C);
-		if (matches) {
-			registerId = lvl;
-			registerId += matches[1] ? '-' + matches[1] : that.SUFFIX;
-			that.register[registerId] = line;
-			registered = true;
-		}
-		return {
-			registered: registered,
-			registerId: registerId
-		};
+	Replicator.registerLvl = function (key, lvl, ln) {
+		var registerId = key ? lvl + '-' + key : lvl + '-x';
+		this.register[registerId] = ln;
 	};
 
-	/**
-	 * @param string macro
-	 * @param string ln
-	 * @returns {{exists: boolean, replacement: *}}
-	 */
 	Macros.replace = function (macro, ln) {
-		var line, re, macroFn,
-			that = Macros,
-			replacement = null,
-			exists = false;
-		if (that.macros[macro]) {
-			re = new RegExp("^" + RegExp.quote(macro));
-			line = ltrim(ln.replace(re, ''));
-			replacement = that.macros[macro](line);
-			exists = true;
-		}
-		return {
-			exists: exists,
-			replacement: replacement
-		};
+		ln = ln.split(' ').slice(1).join(' ');
+
+		return this.macros[macro](ln);
 	};
 
-	/**
-	 * @param string macroId
-	 * @param callable fn
-	 */
+	Macros.findMacro = function (macro) {
+		return arrayKeyExists(macro, this.macros);
+	};
+
 	Macros.addMacro = function (macroId, fn) {
-		var that = Macros;
 
-		if (!arrayKeyExists(macroId, that.macros))
-			that.macros[macroId] = fn;
+		if (!arrayKeyExists(macroId, this.macros)) this.macros[macroId] = fn;
 	};
 
-	/** @param string macros */
 	Macros.removeMacros = function (macros) {
-		if (typeof macros === "string") {
+		if (typeof macros === 'string' && macros.trim().length) {
 			var macro;
 			macros = macros.split(" ");
+
 			for (macro of macros) {
-				if (arrayKeyExists(macro, this.macros)) {
-					delete this.macros[macro];
-				}
+				if (arrayKeyExists(macro, this.macros)) delete this.macros[macro];
 			}
 		}
 	};
 
-	/**
-	 * @param attribute
-	 * @return boolean
-	 */
 	Elements.isBoolean = function (attribute) {
-		return inArray(attribute, Elements.booleanAttributes);
+		return inArray(attribute, this.booleanAttributes);
 	};
 
-	/**
-	 * @param string el
-	 * @param returnSettings
-	 * @returns {boolean}
-	 */
 	Elements.findElement = function (el, returnSettings) {
 		var result = false;
-		if (inArray(el, Elements.elements))
-			result = returnSettings ? Elements.getElementSettings(el) : true;
+
+		if (inArray(el, this.elements)) result = returnSettings ? this.getElementSettings(el) : true;
+
 		return result;
 	};
 
-	/**
-	 * @param string el
-	 * @returns {{element: string, paired: boolean, qkAttributes: array}}
-	 */
 	Elements.getElementSettings = function (el) {
 		var s,
 			qkAttributes = null,
 			paired = true,
-			settings = Elements.elementsSettings;
+			settings = this.elementsSettings;
+
 		if (arrayKeyExists(el, settings)) {
 			s = settings[el];
 			paired = !arrayKeyExists("unpaired", s);
@@ -784,49 +725,51 @@
 		}
 	};
 
-	/** @param array $attributes */
 	Elements.addBooleanAttributes = function (attributes) {
-		if (typeof attributes === "string") {
-			attributes = attributes.splice(" ");
-			Elements.booleanAttributes.concat(attributes);
+		if (typeof attributes === "string" && attributes.trim().length) {
+			attributes = attributes.split(" ");
+
+			this.booleanAttributes = emptyStringArrayFilter(this.booleanAttributes.concat(attributes));
 		}
 	};
 
-	/** @param array $attributes */
 	Elements.removeBooleanAttributes = function (attributes) {
-		if (typeof attributes === "string") {
+		if (typeof attributes === "string" && attributes.trim().length) {
 			var attributeKey, attribute;
 			attributes = attributes.split(" ");
+
 			for (attribute of attributes) {
 				attributeKey = inArray(attribute, this.booleanAttributes, true);
-				if (attributeKey >= 0) {
-					delete this.booleanAttributes[attributeKey];
-				}
+
+				if (attributeKey >= 0) delete this.booleanAttributes[attributeKey];
 			}
 		}
 	};
+
 	Elements.addElements = function (elements) {
-		if (typeof elements === "object") {
+		if (typeof elements === "object" && Object.keys(elements).length) {
 			var elementKey, elementSettings;
+
 			for (elementKey in elements) {
 				elementSettings = elements[elementKey];
-				if (elementSettings) {
-					this.elementsSettings[elementKey] = elementSettings;
-				}
+
+				if (elementSettings) this.elementsSettings[elementKey] = elementSettings;
+
 				this.elements.push(elementKey);
 			}
 		}
 	};
 
 	Elements.removeElements = function (elements) {
-		if (typeof elements === "string") {
-			var elements, elementKey, element;
+		if (typeof elements === "string" && elements.trim().length) {
+			var elementKey, element;
 
 			elements = elements.split(" ");
+
 			for (element of elements) {
 				elementKey = inArray(element, this.elements, true);
-				if (elementKey >= 0)
-					delete this.elements[elementKey];
+
+				if (elementKey >= 0) delete this.elements[elementKey];
 
 				delete this.elementsSettings[element];
 			}
@@ -834,25 +777,30 @@
 	};
 
 	Elements.changeQkAttributes = function (elements) {
-		if (typeof elements === "object") {
+		if (typeof elements === "object" && Object.keys(elements).length) {
 			var attributes, attribute, newAttribute, attrKey, actAttribute, element, elementKey,
 				removeAttributes = [];
+
 			if (elements && typeof elements === "object") {
 				for (elementKey in elements) {
 					element = elementKey;
 					attributes = elements[elementKey];
+
 					for (attribute in attributes) {
 						actAttribute = attribute;
 						newAttribute = attributes[attribute];
+
 						if (arrayKeyExists(element, this.elementsSettings) && arrayKeyExists("qkAttributes", this.elementsSettings[element]) && inArray(actAttribute, this.elementsSettings[element]["qkAttributes"])) {
 							if (newAttribute) {
 								attrKey = inArray(actAttribute, this.elementsSettings[element]["qkAttributes"], true);
 								this.elementsSettings[element]["qkAttributes"][attrKey] = newAttribute;
+
 							} else {
 								removeAttributes.push(actAttribute);
 							}
 						}
 					}
+
 					if (removeAttributes) {
 						for (attribute of removeAttributes) {
 							attrKey = inArray(attribute, this.elementsSettings[element]["qkAttributes"], true);
@@ -864,7 +812,24 @@
 		}
 	};
 
-	/** @type {string[]} */
+	Elements.addQkAttributes = function (elements) {
+		var i, element, newAttributes, attributes;
+		if(typeof elements === 'object' && Object.keys(elements).length) {
+			for (element of Object.keys(elements)) {
+				attributes = elements[element];
+
+				if (!arrayKeyExists(element, this.elementsSettings)) this.elementsSettings[element] = [];
+
+				if (!arrayKeyExists('qkAttributes', this.elementsSettings[element])) this.elementsSettings[element]['qkAttributes'] = [];
+
+				if (arrayKeyExists(element, this.elementsSettings)) {
+					newAttributes = attributes.split(' ');
+					this.elementsSettings[element]['qkAttributes'] = this.elementsSettings[element]['qkAttributes'].concat(newAttributes);
+				}
+			}
+		}
+	};
+
 	Elements.elements = [
 		'a',
 		'abbr',
@@ -989,8 +954,8 @@
 		'summary'
 	];
 
-	/** @type {string[]} */
 	Elements.booleanAttributes = [
+		'allowfullscreen',
 		'autofocus',
 		'autoplay',
 		'async',
@@ -1011,11 +976,9 @@
 		'readonly',
 		'required',
 		'selected',
-		'spellcheck',
-		'n:ifcontent'
+		'spellcheck'
 	];
 
-	/** @type object */
 	Elements.elementsSettings = {
 		a: {
 			qkAttributes: ['href', 'target', 'role']
@@ -1030,7 +993,8 @@
 			qkAttributes: ['src']
 		},
 		base: {
-			unpaired: true
+			unpaired: true,
+			qkAttributes: ['href']
 		},
 		bdo: {
 			qkAttributes: ['dir']
@@ -1140,161 +1104,126 @@
 		}
 	};
 
-	/** @return {string} */
 	Macros.addMacro("!5", function () {
 		return '<!DOCTYPE html>';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('!Doctype', function (line) {
 		return '<!DOCTYPE ' + line + '>';
 	});
 
-	/**
-	 * @return string
-	 */
 	Macros.addMacro('utf-8', function () {
-		return '<meta charset="utf-8" />';
+		return '<meta charset="utf-8">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('charset', function (line) {
-		return '<meta charset="' + line + '" />';
+		return '<meta charset="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('keywords', function (line) {
-		return '<meta name="Keywords" content="' + line + '" />';
+		return '<meta name="keywords" content="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('description', function (line) {
-		return '<meta name="Description" content="' + line + '" />';
+		return '<meta name="description" content="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('author', function (line) {
-		return '<meta name="Author" content="' + line + '" />';
+		return '<meta name="author" content="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('viewport', function (line) {
-		return '<meta name="viewport" content="' + line + '" />';
+		var viewport = '<meta name="viewport" content="';
+		viewport += line.trim() ? line : 'width=device-width, initial-scale=1';
+		viewport += '">';
+		return viewport;
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
+	Macros.addMacro('index-follow', function (line) {
+		return '<meta name="robots" content="index, follow">';
+	});
+
+	Macros.addMacro('no-index-follow', function (line) {
+		return '<meta name="robots" content="noindex, nofollow">';
+	});
+
 	Macros.addMacro('fb', function (line) {
 		var splitLine = line.split(" "),
 			selected = splitLine[0],
 			content = (line.replace(selected, '')).trim();
 
-		return '<meta property="og:' + selected + '" content="' + content + '" />';
+		return '<meta property="og:' + selected + '" content="' + content + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('tw', function (line) {
 		var splitLine = line.split(" "),
 			selected = splitLine[0],
 			content = (line.replace(selected, '')).trim();
 
-		return '<meta name="twitter:' + selected + '" content="' + content + '" />';
+		return '<meta name="twitter:' + selected + '" content="' + content + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('css', function (line) {
-		return '<link rel="stylesheet" type="text/css" href="' + line + '" />';
+		return '<link rel="stylesheet" type="text/css" href="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('favicon', function (line) {
-		return '<link rel="shortcut icon" href="' + line + '" />';
+		return '<link rel="shortcut icon" href="' + line + '">';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('js', function (line) {
 		return '<script type="text/javascript" src="' + line + '"></script>';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('js-async', function (line) {
 		return '<script type="text/javascript" src="' + line + '" async></script>';
 	});
 
-	/**
-	 * @param string line
-	 * @return string
-	 */
 	Macros.addMacro('//', function (line) {
 		return '<!--' + line + '-->';
 	});
 
-	/**
-	 * @return string
-	 */
 	Macros.addMacro('/*', function (line) {
 		return '<!--';
 	});
 
-	/**
-	 * @return string
-	 */
 	Macros.addMacro('*/', function (line) {
 		return '-->';
 	});
 
-	/**
-	 * @type {{setup: {}, compile: (Compiler.compile)}}
-	 */
 	window.Macdom = {
-		setup: {},
+		setup: {
+			addBooleanAttributes: '',
+			addElements: {},
+			addMacros: {},
+			addQkAttributes: {},
+			booleanAttributes: false,
+			booleansWithValue: false,
+			changeQkAttributes: {},
+			closeSelfClosingTags: false,
+			compressCode: false,
+			compressText: false,
+			indentMethod: 'combined',
+			outputIndentation: 'tabs',
+			preferXhtml: false,
+			removeBooleanAttributes: '',
+			removeElements: '',
+			removeMacros: '',
+			skipElements: '',
+			spacesPerIndent: 4,
+			structureHtmlSkeleton: true
+		},
+
 		compile: function (content) {
 
-			if (!content) return;
+			if (!content) return '';
 
-			// Constructors
-			Compiler.construct(this.setup);
-			Elements.construct(this.setup);
-			Macros.construct(this.setup);
-			Replicator.construct(this.setup);
-
-			if (this.setup.reset && this.setup.reset === true)
-				this.setup = {};
+			// Construct
+			Setup = this.setup;
+			Compiler.construct();
+			Elements.construct();
+			Macros.construct();
+			Replicator.construct();
 
 			// Run compiler
 			return Compiler.compile(content)

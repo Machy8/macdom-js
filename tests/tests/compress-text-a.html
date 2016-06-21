@@ -1,3 +1,60 @@
+p Short text 
+    connected with 
+    another closed 
+    by a dot.
+p Short text - 
+    another text
+p Long text with a 
+    a $http://www.google.com $blank
+	b bold link 
+	on Google
+p Long text with a 
+    a $http://www.google.com $blank
+	b bold
+            | link SKIP 
+	o
+        n
+        | G
+        o
+        o
+        g
+        l
+        e
+p Long text with a 
+    a $http://www.google.com $blank
+	b bold link
+p  Short text -
+    | another text
+p  Short text -
+    | another
+    | text.
+p  Short text -
+    || another
+    || text.
+div
+    text
+    here
+    js-async somescript.js
+    some
+    text 
+    here
+div
+    div
+    text
+    here
+    js-async somescript.js
+    some
+    text 
+    here
+p Short text with a 
+    <b class="boldtext">bold text that have an
+	<i>"italic" word</i></b> 
+    inside.
+p Short text containing <i>italic text</i>, - 
+    <b>bold text</b>
+p Short text containing <i>
+    open tag that is closed 
+    on another line</i>
 <style>
     h1 {
         color: #123;
@@ -16,6 +73,37 @@ h2 Tag-3
 div {
     background: #123  }</style>
 h2 Tag-4
+<?php
+    $a = 123;
+    echo $a;
+?>
+h2 Tag-5
+<?php $a = 123; echo $a; ?>
+h2 Tag-6
+<?php $a = 123;
+echo $a;
+?>
+h2 Tag-7
+<? $a = 123;
+echo $a; ?>
+h2 Tag-8
+<?
+    $a = 123;
+    echo $a;
+    i
+    h1
+    h2
+?>
+h2 Tag-9
+<? $a = 123; echo $a; ?>
+h2 Tag-10
+<? $a = 123;
+echo $a;
+?>
+h2 Tag-11
+<? $a = 123;
+echo $a; ?>
+h2 Tag-12
 <script type="text/javascript">
     var a = 123;
     a ++;
@@ -31,7 +119,7 @@ h2 Tag-15
 <script type="text/javascript"> var a = 123; a ++; alert(a);
 var b = 123; b ++; alert(b);</script>
 h2 Tag-16
-div
+div 
     SKIP-CONTENT
         h1 No compiled title
             span Text text text
@@ -116,7 +204,7 @@ h2 Tag-33
 table
     h1 Text here
     h2 text there
-h6
+h6 
     span Some title here
 h2 Tag-34
 div #wrapper2
@@ -132,12 +220,12 @@ div #wrapper2
     div Content in div
 h2 Tag 36
 div #wrapper
-    <div id="myId">
+    <div id="myId"> SKIP
         SKIP-CONTENT
             div
                 div
                     div
-    </div>
+    </div> SKIP
     h2 Tag 37
     <div id="myId"> SKIP-CONTENT
         div
@@ -152,7 +240,3 @@ div #wrapper
             div
     /SKIP
 h2 Tag 39
-style
-    | h1
-    | Another
-h2 Tag 40

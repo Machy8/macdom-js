@@ -7,48 +7,59 @@
     TestFiles("macros");
     TestFiles("quick-attributes");
     TestFiles("replicator");
-    TestFiles("showcase");
-    Macdom.setup.preferXhtml = true;
-    TestFiles("prefer-xhtml");
-    Macdom.setup.finallCodeIndentation = "spaces";
-    TestFiles("finall-code-indentation");
-    
-    Macdom.setup.ncaRegExpInlineTags = [/^\s*\<(?:skipthisarea) *[^>]*\>.*\<\/skipthisarea\>/];
-    Macdom.setup.ncaRegExpOpenTags = [/^\s*\<(?:skipthisarea) *[^>]*\>/];
-    Macdom.setup.ncaRegExpCloseTags = [/.*\<\/(?:skipthisarea)\>$/];
-    Macdom.setup.ncaCloseTags = ['</skipthisarea>'];
-    TestFiles("skip-areas");
+    TestFiles("check-js-css");
     TestFiles("structure-html-skeleton");
 
     Macdom.setup.structureHtmlSkeleton = false;
     TestFiles("structure-html-skeleton2");
-    Macdom.setup.structureHtmlSkeleton = true;
+
+    Macdom.setup.structureHtmlSkeleton = false;
+    TestFiles("showcase");
+
+    Macdom.setup.structureHtmlSkeleton = false;
     TestFiles("text");
-    
+
+    Macdom.setup.preferXhtml = true;
+    TestFiles("prefer-xhtml");
+
+    Macdom.setup.skipElements = 'table h6 skipthisarea';
+    TestFiles("skip-areas");
+
+    Macdom.setup.outputIndentation = "spaces";
+    TestFiles("output-indentation");
+
+    Macdom.setup.addQkAttributes = {
+        span: 'data-first data-second',
+        div: 'data-first data-second data-third'
+    };
+    TestFiles('add-qk-attributes');
+
     TestStrings("Elements 1", 'html', '<html></html>');
     TestStrings("Elements 2", 'input', '<input>');
     TestStrings("Elements 3", 'div\ninput', '<div></div><input>');
-    
+
     Macdom.setup.addBooleanAttributes = "beer steak muhehe";
-    TestStrings("addBooleanAttributes", 'input $text beer steak muhehe', '<input type="text" beer steak muhehe>');
+    TestStrings("AddBooleanAttributes", 'input $text beer steak muhehe', '<input type="text" beer steak muhehe>');
 
     Macdom.setup.removeBooleanAttributes = "beer steak muhehe";
-    TestStrings("removeBooleanAttributes", 'input $text beer steak muhehe', '<input type="text">');
-    
-    Macdom.setup.indentMethod = 1;
-    TestStrings("indent methods 1.1", "div\n    div", '<div><div></div></div>');
-    Macdom.setup.indentMethod = 1;
-    TestStrings("indent methods 1.2", "div\n\tdiv", '<div></div><div></div>');
+    TestStrings("RemoveBooleanAttributes", 'input $text beer steak muhehe', '<input type="text">');
 
-    Macdom.setup.indentMethod = 2;
-    TestStrings("indent methods 2.1", "div\n\tdiv", '<div><div></div></div>');
-    Macdom.setup.indentMethod = 2;
-    TestStrings("indent methods 2.2", "div\n    div", '<div></div><div></div>');
-    
-    TestStrings("indent methods 3.1", "div\n    div", '<div><div></div></div>');
-    TestStrings("indent methods 3.2", "div\n\tdiv", '<div><div></div></div>');
-    TestStrings("indent methods 3.3", "div\n    div\n    \tdiv", '<div><div><div></div></div></div>');
-    
+    Macdom.setup.indentMethod = 'spaces';
+    TestStrings("Indent methods 1.1", "div\n    div", '<div><div></div></div>');
+
+    Macdom.setup.indentMethod = 'spaces';
+    TestStrings("Indent methods 1.2", "div\n\tdiv", '<div></div><div></div>');
+
+    Macdom.setup.indentMethod = 'tabs';
+    TestStrings("Indent methods 2.1", "div\n\tdiv", '<div><div></div></div>');
+
+    Macdom.setup.indentMethod = 'tabs';
+    TestStrings("Indent methods 2.2", "div\n    div", '<div></div><div></div>');
+
+    TestStrings("Indent methods 3.1", "div\n    div", '<div><div></div></div>');
+    TestStrings("Indent methods 3.2", "div\n\tdiv", '<div><div></div></div>');
+    TestStrings("Indent methods 3.3", "div\n    div\n    \tdiv", '<div><div><div></div></div></div>');
+
     Macdom.setup.changeQkAttributes = {
         a: {
             target: 'href',
@@ -63,11 +74,12 @@
             href: null
         }
     };
-    TestStrings("changeQkAttributes2", 'a $google.com $blank Some text', '<a>Some text</a>'); 
-   
+    TestStrings("changeQkAttributes2", 'a $google.com $blank Some text', '<a>Some text</a>');
+
     Macdom.setup.removeElements = "a span div";
+    Macdom.setup.compressCode = true;
     TestStrings("removeElements", "div\nspan\na", 'divspana');
-    
+
     Macdom.setup.addElements = {
         svg: {
             qkAttributes: ['width', 'height']
@@ -82,7 +94,7 @@
     };
     TestStrings("addElements", 'svg $100 $100 Inner text', '<svg width="100" height="100">Inner text</svg>');
     TestStrings("addElements2", 'elementxy $Some data content;', '<elementxy data-somedata="Some data content">');
-    
+
     var inputFunction = function (line) {
         return '<input type="password" data-user="' + line + '" placeholder="New password">';
     };
@@ -96,10 +108,11 @@
     TestStrings("addMacros2", 'passwordInput user12345', '<input type="password" data-user="user12345" placeholder="New password">');
 
     Macdom.setup.removeMacros = "!5 utf-8";
+    Macdom.setup.compressCode = true;
     TestStrings("removeMacros", '!5\nutf-8', '!5utf-8');
-    
+
     TestStrings("Spaces per indent 1", 'div\n    div #innerDiv', '<div><div id="innerDiv"></div></div>');
-    
+
     Macdom.setup.spacesPerIndent = 3;
     TestStrings("Spaces per indent 2", 'div\n   div #innerDiv', '<div><div id="innerDiv"></div></div>');
 
@@ -108,4 +121,6 @@
 
     Macdom.setup.spacesPerIndent = 1;
     TestStrings("Spaces per indent 4", 'div\n div #innerDiv', '<div><div id="innerDiv"></div></div>');
+
+    showSummary();
 }());
