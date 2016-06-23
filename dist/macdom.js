@@ -146,7 +146,7 @@
 				if (element === 'html') lvl = 0;
 			}
 
-			if (compilationAllowed && ln && !Elements.findElement(element)) {
+			if (compilationAllowed && ln && !Elements.findElement(element) && !Macros.findMacro(element)) {
 				ln = ln.replace(/\|$/, '');
 				replicatorResult = Replicator.detect(lvl, element, ln);
 
