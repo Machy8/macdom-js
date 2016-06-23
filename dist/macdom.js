@@ -1,7 +1,6 @@
 /* Macdom-js Copyright (c) 2016 Vladimír Macháček | For the full copyright and license information, please view the file license.md that was distributed with this source code. */
 
 (function () {
-
 	"use strict";
 
 	// Helpers definition
@@ -12,7 +11,7 @@
 				newArray = [];
 
 			for (item of array) {
-				if(item.trim().length) newArray.push(item);
+				if (item.trim().length) newArray.push(item);
 			}
 
 			return newArray;
@@ -25,8 +24,7 @@
 		inArray = function (needle, haystack, returnKey) {
 			var key = haystack.indexOf(needle);
 
-			if (returnKey)
-				return key >= 0 ? key : 0;
+			if (returnKey) return key >= 0 ? key : 0;
 
 			return key >= 0;
 		},
@@ -58,14 +56,14 @@
 		Macros = {},
 		Replicator = {},
 		Setup;
-		Macros.macros = {};
+	Macros.macros = {};
 
 	Compiler.construct = function () {
 		var inlineOpenTags, element, tag, reCloseTag,
 			skipElements = Setup.skipElements || '',
 			ncaSkipElements = ['script', 'style', 'textarea', 'code'];
 
-			skipElements = skipElements.split(' ');
+		skipElements = skipElements.split(' ');
 
 		this.AREA_TAG = 'SKIP';
 
@@ -92,20 +90,18 @@
 		}
 
 		for (tag of this.ncaSkipElements) {
-			reCloseTag = new RegExp('</'+tag+'>');
+			reCloseTag = new RegExp('</' + tag + '>');
 			this.ncaRegExpCloseTags.push(reCloseTag);
 		}
 	};
 
 	Elements.construct = function () {
-
 		this.addBooleanAttributes(Setup.addBooleanAttributes);
 		this.changeQkAttributes(Setup.changeQkAttributes);
 		this.removeBooleanAttributes(Setup.removeBooleanAttributes);
 		this.addElements(Setup.addElements);
 		this.removeElements(Setup.removeElements);
 		this.addQkAttributes(Setup.addQkAttributes);
-
 	};
 
 	Macros.construct = function () {
@@ -120,20 +116,19 @@
 		}
 
 		this.removeMacros(Setup.removeMacros);
-
 	};
 
 	Replicator.construct = function () {
 		this.REG_EXP_A = /\[(.*?)\]/g;
 		this.REG_EXP_B = /\[@\]/;
-		this.REG_EXP_B_g = /\[@\]/g;
 		this.REG_EXP_C = /^@([\S]*)/;
 		this.REG_EXP_D = /^\/@([\S]*)/;
 		this.register = {};
 	};
 
 	Compiler.compile = function (content) {
-		var ln, lvl, element, noCompileAreaTag, compilationAllowed, replicatorResult, processElement, txt, attributes, isJsCssLink, isJsCss, attr, type, macro;
+		var ln, lvl, element, noCompileAreaTag, compilationAllowed, replicatorResult, processElement, txt, attributes,
+			isJsCssLink, isJsCss, attr, type, macro;
 
 		if (!content) return '';
 
@@ -147,6 +142,7 @@
 
 			if (Setup.structureHtmlSkeleton) {
 				lvl = inArray(element, ['head', 'body']) ? 1 : lvl + 1;
+
 				if (element === 'html') lvl = 0;
 			}
 
@@ -154,12 +150,12 @@
 				ln = ln.replace(/\|$/, '');
 				replicatorResult = Replicator.detect(lvl, element, ln);
 
-				if (replicatorResult['toReplicate']) {
-					ln = replicatorResult['toReplicate'];
+				if (replicatorResult.toReplicate) {
+					ln = replicatorResult.toReplicate;
 					element = this.getElement(ln);
 				}
 
-				if (replicatorResult['clearLn']) ln = element = null;
+				if (replicatorResult.clearLn) ln = element = null;
 			}
 
 			processElement = compilationAllowed && Elements.findElement(element);
@@ -190,7 +186,7 @@
 					txt = this.getLnTxt(txt, true, true);
 					txt = ' ' + type + ' ' + attr + '="' + isJsCssLink + '"' + txt;
 					attributes = this.processLn(txt);
-					attributes['txt'] = null;
+					attributes.txt = null;
 					this.addOpenTag(element, lvl, attributes);
 
 				} else {
@@ -215,11 +211,12 @@
 	};
 
 	Compiler.getLnTxt = function (ln, clean, elementExists) {
-		var element, re,
-			clean = clean || false,
-			elementExists = elementExists || false,
+		var re,
 			find = [new RegExp(' *' + this.AREA_TAG + '(?:-CONTENT)?')],
 			txt = ltrim(ln);
+
+		elementExists = elementExists || false;
+		clean = clean || false;
 
 		if (elementExists) {
 			txt = txt.split(' ').slice(1).join(' ');
@@ -229,7 +226,7 @@
 		if (clean) find.push(/^\|/);
 
 		if (txt) {
-			for(re of find) {
+			for (re of find) {
 				txt = txt.replace(re, '');
 			}
 		}
@@ -257,15 +254,15 @@
 
 	Compiler.addCloseTags = function (lvl) {
 		var i,
-			lvl = lvl || 0,
 			lastTag = this.closeTags.length;
+
+		lvl = lvl || 0;
 
 		for (i = lastTag - 1; i >= 0; i--) {
 			if (lvl > this.closeTags[i][0]) break;
 
 			this.addToQueue('closeTag', this.closeTags[i][1], this.closeTags[i][0]);
 			lastTag = i;
-
 		}
 
 		this.closeTags.splice(lastTag, this.closeTags.length);
@@ -275,8 +272,8 @@
 		var usedKeys, withoutKey, newAttr, paramKey, selfClosing, type, closeTag, txt, attribute,
 			elementSettings = Elements.findElement(element, true),
 			openTag = '<' + element,
-			sQkAttributes = elementSettings['qkAttributes'],
-			qkAttributes = attributes['qkAttributes'];
+			sQkAttributes = elementSettings.qkAttributes,
+			qkAttributes = attributes.qkAttributes;
 
 		if (sQkAttributes && qkAttributes) {
 			usedKeys = [];
@@ -285,16 +282,16 @@
 			for (attribute of qkAttributes) {
 				newAttr = null;
 
-				if (attribute['key']) {
-					paramKey = attribute['key'] - 1;
+				if (attribute.key) {
+					paramKey = attribute.key - 1;
 
 					if (arrayKeyExists(paramKey, sQkAttributes)) {
-						newAttr = sQkAttributes[paramKey] + '="' + attribute['value'] + '"';
+						newAttr = sQkAttributes[paramKey] + '="' + attribute.value + '"';
 						usedKeys.push(paramKey);
 					}
 
 				} else if (!inArray(withoutKey, usedKeys) && arrayKeyExists(withoutKey, sQkAttributes)) {
-					newAttr = sQkAttributes[withoutKey] + '="' + attribute['value'] + '"';
+					newAttr = sQkAttributes[withoutKey] + '="' + attribute.value + '"';
 					withoutKey++;
 				}
 
@@ -303,22 +300,20 @@
 		}
 
 		// Add html and boolean attributes
-		openTag += attributes['htmlAttributes'] + attributes['booleanAttributes'];
+		openTag += attributes.htmlAttributes + attributes.booleanAttributes;
 
 		// Close the open tag, add close tags if needed
-		selfClosing = elementSettings['paired'] || !Setup.closeSelfClosingTags ? '' : ' /';
+		selfClosing = elementSettings.paired || !Setup.closeSelfClosingTags ? '' : ' /';
 		openTag += selfClosing + '>';
 		this.addCloseTags(lvl);
-		type = elementSettings['paired'] ? 'openTag' : 'inlineTag';
+		type = elementSettings.paired ? 'openTag' : 'inlineTag';
 		this.addToQueue(type, openTag, lvl);
 
 		// If the tag is paired add its close tag to the storage
-		if (elementSettings['paired']) {
-			txt = attributes['txt'];
+		if (elementSettings.paired) {
+			txt = attributes.txt;
 
-			if (txt) {
-				this.addToQueue('text', txt, lvl);
-			}
+			if (txt) this.addToQueue('text', txt, lvl);
 
 			closeTag = '</' + element + '>';
 			this.closeTags.push([lvl, closeTag]);
@@ -326,7 +321,7 @@
 	};
 
 	Compiler.processLn = function (txt) {
-		var value, i, classes, newHref, htmlAttributes, htmlClsSelector, re, reAll, idSelector, attribute, matches,
+		var i, htmlAttributes, htmlClsSelector, re, idSelector, attribute, matches,
 			txt2array, match, paramVal, clsSelectors, qkAttributes, booleanAttributes, paramKey, txtFromTag2End;
 
 		// Store the text from the first tag to the end of the line
@@ -390,6 +385,7 @@
 					break;
 				}
 			}
+
 			htmlAttributes = htmlAttributes.replace(re, ' class="' + htmlClsSelector + ' ' + clsSelectors + '"');
 
 		} else if (clsSelectors) {
@@ -446,7 +442,7 @@
 	};
 
 	Compiler.detectNoCompileArea = function (txt, element, lvl) {
-		var areaClosed, matchedTag, tag, re, tagDetected, txt2array,
+		var areaClosed, matchedTag, tag, tagDetected, txt2array,
 			skipContent = false,
 			skipRow = false,
 			skipTagClose = '/' + this.AREA_TAG;
@@ -460,10 +456,10 @@
 		if (areaClosed) {
 			txt2array = txt.split(' ');
 
-			if (txt2array[txt2array.length-1] === this.AREA_TAG && txt2array.length > 1) {
+			if (txt2array[txt2array.length - 1] === this.AREA_TAG && txt2array.length > 1) {
 				skipRow = true;
 
-			} else if (txt2array[txt2array.length-1] === this.AREA_TAG + '-CONTENT') {
+			} else if (txt2array[txt2array.length - 1] === this.AREA_TAG + '-CONTENT') {
 				skipContent = true;
 			}
 		}
@@ -536,8 +532,9 @@
 				formatting: formatting
 			};
 
-		if (type === 'text' && Setup.compressText && formatting && arrayKeyExists(lastKey, this.outputQueue) && this.outputQueue[lastKey]['type'] === 'text' && this.outputQueue[lastKey]['formatting']) {
-			this.outputQueue[lastKey]['content'] += content;
+		if (type === 'text' && Setup.compressText && formatting && arrayKeyExists(lastKey, this.outputQueue) && this.outputQueue[lastKey].type === 'text' && this.outputQueue[lastKey].formatting) {
+			this.outputQueue[lastKey].content += content;
+
 			return;
 		}
 
@@ -548,39 +545,42 @@
 
 	Compiler.composeContent = function () {
 		var contentKey, contentArr, lvl, nextOutputKey, nextOutputType, trio, method, indentation, lnBreak;
+
 		for (contentKey in this.outputQueue) {
 			contentArr = this.outputQueue[contentKey];
 
 			if (!Setup.compressCode) {
-				lvl = contentArr['lvl'];
+				lvl = contentArr.lvl;
 				nextOutputKey = contentKey + 1;
-				nextOutputType = arrayKeyExists(nextOutputKey, this.outputQueue) ? this.outputQueue[nextOutputKey]['type'] : '';
+				nextOutputType = arrayKeyExists(nextOutputKey, this.outputQueue) ? this.outputQueue[nextOutputKey].type : '';
 
-				// WTF condition for output formatting
 				trio = ['openTag', 'inlineTag', 'macro'];
 
-				if (typeof this.prevOutput['type'] !== 'undefined' && (!this.prevOutput['formatting'] || inArray(this.prevOutput['type'], ['closeTag', 'inlineTag', 'macro']) || inArray(contentArr['type'], trio)
-					|| contentArr['type'] === 'closeTag' && (this.prevOutput['type'] === 'text' && (!Setup.compressText || this.prev2OutputType !== 'openTag'))
-					|| contentArr['type'] === 'text' && (!Setup.compressText || Setup.compressText && (!contentArr['formatting'] || this.prevOutput['type'] === 'openTag' && inArray(nextOutputType, trio))))
+				// WTF condition for output formatting
+				if (typeof this.prevOutput.type !== 'undefined' && (!this.prevOutput.formatting || inArray(this.prevOutput.type, ['closeTag', 'inlineTag', 'macro']) || inArray(contentArr.type, trio)
+					|| contentArr.type === 'closeTag' && (this.prevOutput.type === 'text' && (!Setup.compressText || this.prev2OutputType !== 'openTag'))
+					|| contentArr.type === 'text' && (!Setup.compressText || Setup.compressText && (!contentArr.formatting || this.prevOutput.type === 'openTag' && inArray(nextOutputType, trio))))
 				) {
-					if (contentArr['formatting'] && contentArr['type'] === 'text') {
-						if (!Setup.compressText && lvl === this.prevOutput['lvl'] && this.prevOutput['type'] === 'openTag') {
+
+					if (contentArr.formatting && contentArr.type === 'text') {
+						if (!Setup.compressText && lvl === this.prevOutput.lvl && this.prevOutput.type === 'openTag') {
 							lvl++;
 
-						} else if (Setup.compressText && (this.prevOutput['type'] === 'text' && this.prevOutput['formatting'] || this.prevOutput['type'] === 'openTag')) {
-							lvl = this.prevOutput['lvl'] + 1;
+						} else if (Setup.compressText && (this.prevOutput.type === 'text' && this.prevOutput.formatting || this.prevOutput.type === 'openTag')) {
+							lvl = this.prevOutput.lvl + 1;
 						}
 					}
+
 					lvl += Setup.structureHtmlSkeleton && lvl > 0 ? -1 : 0;
 					method = Setup.outputIndentation === 'spaces' ? '    ' : "\t";
 					indentation = method.repeat(lvl);
 					lnBreak = Setup.compressCode ? '' : "\n";
 					this.outputStorage += lnBreak + indentation;
 				}
-				this.prev2OutputType = this.prevOutput['type'];
+				this.prev2OutputType = this.prevOutput.type;
 				this.prevOutput = contentArr;
 			}
-			this.outputStorage += contentArr['content'];
+			this.outputStorage += contentArr.content;
 		}
 		this.outputQueue = [];
 	};
@@ -603,12 +603,12 @@
 
 			regLn = this.isRegistered(lvl, element);
 
-			if (regLn['ln']) {
+			if (regLn.ln) {
 				re = new RegExp(RegExp.quote(element));
 
-				if (regLn['key']) txt = txt.replace(re, '');
+				if (regLn.key) txt = txt.replace(re, '');
 
-				replacement = this.synchronizeLines(txt, regLn['ln']);
+				replacement = this.synchronizeLines(txt, regLn.ln);
 			}
 
 		} else if (deregLn) {
@@ -684,8 +684,9 @@
 	};
 
 	Macros.removeMacros = function (macros) {
+		var macro;
+
 		if (typeof macros === 'string' && macros.trim().length) {
-			var macro;
 			macros = macros.split(" ");
 
 			for (macro of macros) {
@@ -715,14 +716,14 @@
 		if (arrayKeyExists(el, settings)) {
 			s = settings[el];
 			paired = !arrayKeyExists("unpaired", s);
-			qkAttributes = arrayKeyExists("qkAttributes", s) ? s['qkAttributes'] : null;
+			qkAttributes = arrayKeyExists("qkAttributes", s) ? s.qkAttributes : null;
 		}
 
 		return {
 			element: el,
 			paired: paired,
 			qkAttributes: qkAttributes
-		}
+		};
 	};
 
 	Elements.addBooleanAttributes = function (attributes) {
@@ -734,8 +735,9 @@
 	};
 
 	Elements.removeBooleanAttributes = function (attributes) {
+		var attributeKey, attribute;
+
 		if (typeof attributes === "string" && attributes.trim().length) {
-			var attributeKey, attribute;
 			attributes = attributes.split(" ");
 
 			for (attribute of attributes) {
@@ -747,8 +749,9 @@
 	};
 
 	Elements.addElements = function (elements) {
+		var elementKey, elementSettings;
+
 		if (typeof elements === "object" && Object.keys(elements).length) {
-			var elementKey, elementSettings;
 
 			for (elementKey in elements) {
 				elementSettings = elements[elementKey];
@@ -761,8 +764,9 @@
 	};
 
 	Elements.removeElements = function (elements) {
+		var elementKey, element;
+
 		if (typeof elements === "string" && elements.trim().length) {
-			var elementKey, element;
 
 			elements = elements.split(" ");
 
@@ -777,9 +781,10 @@
 	};
 
 	Elements.changeQkAttributes = function (elements) {
+		var attributes, attribute, newAttribute, attrKey, actAttribute, element, elementKey,
+			removeAttributes = [];
+
 		if (typeof elements === "object" && Object.keys(elements).length) {
-			var attributes, attribute, newAttribute, attrKey, actAttribute, element, elementKey,
-				removeAttributes = [];
 
 			if (elements && typeof elements === "object") {
 				for (elementKey in elements) {
@@ -790,10 +795,10 @@
 						actAttribute = attribute;
 						newAttribute = attributes[attribute];
 
-						if (arrayKeyExists(element, this.elementsSettings) && arrayKeyExists("qkAttributes", this.elementsSettings[element]) && inArray(actAttribute, this.elementsSettings[element]["qkAttributes"])) {
+						if (arrayKeyExists(element, this.elementsSettings) && arrayKeyExists("qkAttributes", this.elementsSettings[element]) && inArray(actAttribute, this.elementsSettings[element].qkAttributes)) {
 							if (newAttribute) {
-								attrKey = inArray(actAttribute, this.elementsSettings[element]["qkAttributes"], true);
-								this.elementsSettings[element]["qkAttributes"][attrKey] = newAttribute;
+								attrKey = inArray(actAttribute, this.elementsSettings[element].qkAttributes, true);
+								this.elementsSettings[element].qkAttributes[attrKey] = newAttribute;
 
 							} else {
 								removeAttributes.push(actAttribute);
@@ -803,8 +808,8 @@
 
 					if (removeAttributes) {
 						for (attribute of removeAttributes) {
-							attrKey = inArray(attribute, this.elementsSettings[element]["qkAttributes"], true);
-							delete this.elementsSettings[element]["qkAttributes"][attrKey];
+							attrKey = inArray(attribute, this.elementsSettings[element].qkAttributes, true);
+							delete this.elementsSettings[element].qkAttributes[attrKey];
 						}
 					}
 				}
@@ -813,18 +818,19 @@
 	};
 
 	Elements.addQkAttributes = function (elements) {
-		var i, element, newAttributes, attributes;
-		if(typeof elements === 'object' && Object.keys(elements).length) {
+		var element, newAttributes, attributes;
+
+		if (typeof elements === 'object' && Object.keys(elements).length) {
 			for (element of Object.keys(elements)) {
 				attributes = elements[element];
 
 				if (!arrayKeyExists(element, this.elementsSettings)) this.elementsSettings[element] = [];
 
-				if (!arrayKeyExists('qkAttributes', this.elementsSettings[element])) this.elementsSettings[element]['qkAttributes'] = [];
+				if (!arrayKeyExists('qkAttributes', this.elementsSettings[element])) this.elementsSettings[element].qkAttributes = [];
 
 				if (arrayKeyExists(element, this.elementsSettings)) {
 					newAttributes = attributes.split(' ');
-					this.elementsSettings[element]['qkAttributes'] = this.elementsSettings[element]['qkAttributes'].concat(newAttributes);
+					this.elementsSettings[element].qkAttributes = this.elementsSettings[element].qkAttributes.concat(newAttributes);
 				}
 			}
 		}
@@ -1139,11 +1145,11 @@
 		return viewport;
 	});
 
-	Macros.addMacro('index-follow', function (line) {
+	Macros.addMacro('index-follow', function () {
 		return '<meta name="robots" content="index, follow">';
 	});
 
-	Macros.addMacro('no-index-follow', function (line) {
+	Macros.addMacro('no-index-follow', function () {
 		return '<meta name="robots" content="noindex, nofollow">';
 	});
 
@@ -1183,11 +1189,11 @@
 		return '<!--' + line + '-->';
 	});
 
-	Macros.addMacro('/*', function (line) {
+	Macros.addMacro('/*', function () {
 		return '<!--';
 	});
 
-	Macros.addMacro('*/', function (line) {
+	Macros.addMacro('*/', function () {
 		return '-->';
 	});
 
