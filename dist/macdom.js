@@ -201,6 +201,8 @@
 		this.addCloseTags();
 		this.composeContent();
 
+		if (Setup.blankLine && !this.outputStorage.match('/\n+$/')) this.outputStorage += "\n";
+
 		return this.outputStorage;
 	};
 
@@ -214,6 +216,8 @@
 		var re,
 			find = [new RegExp(' *' + this.AREA_TAG + '(?:-CONTENT)?')],
 			txt = ltrim(ln);
+
+		if (Setup.trim) txt = txt.trim();
 
 		elementExists = elementExists || false;
 		clean = clean || false;
@@ -1203,6 +1207,7 @@
 			addElements: {},
 			addMacros: {},
 			addQkAttributes: {},
+			blankLine: false,
 			booleanAttributes: false,
 			booleansWithValue: false,
 			changeQkAttributes: {},
@@ -1217,7 +1222,8 @@
 			removeMacros: '',
 			skipElements: '',
 			spacesPerIndent: 4,
-			structureHtmlSkeleton: true
+			structureHtmlSkeleton: true,
+			trim: 'left'
 		},
 
 		compile: function (content) {
