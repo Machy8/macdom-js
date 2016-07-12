@@ -1,4 +1,7 @@
 /* Macdom-js Copyright (c) 2016 Vladimír Macháček | For the full copyright and license information, please view the file license.md that was distributed with this source code. */
+
+var Macdom;
+
 (function () {
 	"use strict";
 
@@ -1199,7 +1202,7 @@
 		return '-->';
 	});
 
-	window.Macdom = {
+	Macdom = {
 		setup: {
 			addBooleanAttributes: '',
 			addElements: {},
@@ -1240,3 +1243,5 @@
 		}
 	};
 }());
+
+if (typeof module !== 'undefined') module.exports = Macdom;
