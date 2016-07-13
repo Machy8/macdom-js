@@ -5,7 +5,7 @@
   "homepage": "https://github.com/Machy8/Macdom-js",
   "main" : "./src/macdom",
   "version": "1.1.0",
-  "license": "New BSD License",
+  "license": "BSD-3-Clause",
   "scripts": {
     "test": "node tests/bootstrap.js"
   },
