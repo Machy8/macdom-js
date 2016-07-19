@@ -1,7 +1,7 @@
 # Macdom-js
 
 [![Build Status](https://travis-ci.org/Machy8/Macdom-js.svg?branch=master)](https://travis-ci.org/Machy8/Macdom-js)
-[![npm](https://img.shields.io/npm/v/macdom.svg?maxAge=2592000)](https://www.npmjs.com/package/Macdom)
+[![npm](https://img.shields.io/npm/v/macdom.svg?maxAge=2592000)](https://www.npmjs.com/package/macdom)
 [![license](https://img.shields.io/github/license/machy8/macdom-js.svg?maxAge=2592000)](https://github.com/Machy8/Macdom-js/blob/master/license.md)
 [![Join the chat at https://gitter.im/Machy8/Macdom](https://badges.gitter.im/Machy8/Macdom.svg)](https://gitter.im/Machy8/Macdom?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
