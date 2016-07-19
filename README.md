@@ -63,4 +63,7 @@ body
 
 ````
 npm install macdom
+
+bower install macdom
+
 ````
