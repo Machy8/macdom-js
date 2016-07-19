@@ -1,0 +1,19 @@
+{
+  "name": "macdom",
+  "description": "The best, highly customizable HTML preprocessor with many amazing features.",
+  "keywords": ["macdom", "html", "preprocessor", "templating", "minification"],
+  "homepage": "https://github.com/Machy8/Macdom-js",
+  "license": "BSD-3-Clause",
+  "main": [
+    "dist/macdom.js",
+    "dist/macdom.min.js",
+    "dist/macdom.min.base62.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Machy8/Macdom-js.git"
+  },
+  "authors": [
+    "Vladimír Macháček <8machy@seznam.cz>"
+  ]
+}
