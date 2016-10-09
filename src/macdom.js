@@ -6,7 +6,6 @@ var Macdom;
 	"use strict";
 
 	// Helpers definition
-
 	var
 		emptyStringArrayFilter = function (array) {
 			var item,
@@ -1244,4 +1243,9 @@ var Macdom;
 	};
 }());
 
-if (typeof module !== 'undefined') module.exports = Macdom;
+if (typeof module !== 'undefined' && module.exports  !== 'undefined') {
+	module.exports = Macdom;
+	
+} else {
+	window.Macdom = Macdom;
+}
