@@ -1241,11 +1241,12 @@ var Macdom;
 			return Compiler.compile(content)
 		}
 	};
-}());
 
-if (typeof module !== 'undefined' && module.exports  !== 'undefined') {
-	module.exports = Macdom;
+	if (typeof module !== 'undefined' && module.exports  !== 'undefined') {
+		module.exports = Macdom;
+
+	} else {
+		window.Macdom = Macdom;
+	}
 	
-} else {
-	window.Macdom = Macdom;
-}
+}());
